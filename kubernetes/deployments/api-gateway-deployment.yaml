@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: urbanflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: jessefrancis21/urbanflow-api-gateway:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: USER_SERVICE_URL
+              value: "http://user-service:8001"
+            - name: MOBILITY_SERVICE_URL
+              value: "http://mobility-intelligence-service:8002"
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://notification-service:8003"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

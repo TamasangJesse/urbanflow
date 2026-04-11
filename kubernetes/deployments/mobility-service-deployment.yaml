@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobility-intelligence-service
+  namespace: urbanflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mobility-intelligence-service
+  template:
+    metadata:
+      labels:
+        app: mobility-intelligence-service
+    spec:
+      containers:
+        - name: mobility-intelligence-service
+          image: jessefrancis21/urbanflow-mobility-service:latest
+          ports:
+            - containerPort: 8002
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: MODEL_PATH
+              value: "/app/ml_model/traffic_model.joblib"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
