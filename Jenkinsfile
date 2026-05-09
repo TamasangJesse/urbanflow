@@ -1,12 +1,30 @@
 pipeline {
     agent any
 
+    environment {
+        USER_SERVICE_ENV         = credentials('user-service-env')
+        INCIDENT_SERVICE_ENV     = credentials('incident-report-service-env')
+        NOTIFICATION_SERVICE_ENV = credentials('notification-service-env')
+        TRAFFIC_SERVICE_ENV      = credentials('traffic-intelligence-service-env')
+        API_GATEWAY_ENV          = credentials('api-gateway-env')
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
                 echo 'Pulling latest code from GitHub...'
                 checkout scm
+            }
+        }
+
+        stage('Prepare Env Files') {
+            steps {
+                sh 'cp $USER_SERVICE_ENV services/user-service/.env'
+                sh 'cp $INCIDENT_SERVICE_ENV services/incident-report-service/.env'
+                sh 'cp $NOTIFICATION_SERVICE_ENV services/notification-service/.env'
+                sh 'cp $TRAFFIC_SERVICE_ENV services/traffic-intelligence-service/.env'
+                sh 'cp $API_GATEWAY_ENV services/api-gateway/.env'
             }
         }
 
