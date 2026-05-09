@@ -13,7 +13,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building all Docker images...'
-                sh 'docker compose build'
+                sh 'docker-compose build'
             }
         }
 
@@ -22,13 +22,7 @@ pipeline {
 
                 stage('Test: user-service') {
                     steps {
-                        sh '''
-                            docker compose run --rm user-service \
-                                python -m pytest tests/ \
-                                --cov=app \
-                                --cov-report=xml \
-                                --junitxml=tests/test-results/results.xml -v
-                        '''
+                        sh 'docker-compose run --rm user-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -39,13 +33,7 @@ pipeline {
 
                 stage('Test: incident-report-service') {
                     steps {
-                        sh '''
-                            docker compose run --rm incident-report-service \
-                                python -m pytest tests/ \
-                                --cov=app \
-                                --cov-report=xml \
-                                --junitxml=tests/test-results/results.xml -v
-                        '''
+                        sh 'docker-compose run --rm incident-report-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -56,13 +44,7 @@ pipeline {
 
                 stage('Test: notification-service') {
                     steps {
-                        sh '''
-                            docker compose run --rm notification-service \
-                                python -m pytest tests/ \
-                                --cov=app \
-                                --cov-report=xml \
-                                --junitxml=tests/test-results/results.xml -v
-                        '''
+                        sh 'docker-compose run --rm notification-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -73,13 +55,7 @@ pipeline {
 
                 stage('Test: traffic-intelligence-service') {
                     steps {
-                        sh '''
-                            docker compose run --rm traffic-intelligence-service \
-                                python -m pytest tests/ \
-                                --cov=app \
-                                --cov-report=xml \
-                                --junitxml=tests/test-results/results.xml -v
-                        '''
+                        sh 'docker-compose run --rm traffic-intelligence-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -90,13 +66,7 @@ pipeline {
 
                 stage('Test: api-gateway') {
                     steps {
-                        sh '''
-                            docker compose run --rm api-gateway \
-                                python -m pytest tests/ \
-                                --cov=app \
-                                --cov-report=xml \
-                                --junitxml=tests/test-results/results.xml -v
-                        '''
+                        sh 'docker-compose run --rm api-gateway python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -114,10 +84,8 @@ pipeline {
             }
             steps {
                 echo 'Deploying UrbanFlow to production...'
-                sh '''
-                    docker compose down
-                    docker compose up -d
-                '''
+                sh 'docker-compose down'
+                sh 'docker-compose up -d'
             }
         }
 
@@ -125,19 +93,15 @@ pipeline {
 
     post {
         success {
-            echo '✅ UrbanFlow deployed successfully'
+            echo 'UrbanFlow deployed successfully'
         }
         failure {
-            echo '❌ Pipeline failed - check test results'
+            echo 'Pipeline failed - check test results'
         }
         always {
-            echo "🏁 Pipeline finished on branch: ${env.BRANCH_NAME}"
-            sh 'docker compose down || true'
+            echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
+            sh 'docker-compose down || true'
         }
     }
 
 }
-
-
-
-
