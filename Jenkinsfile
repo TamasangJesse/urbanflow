@@ -26,13 +26,13 @@ pipeline {
                         dir('services/user-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/user-service/test-results/*.xml'
+                               junit allowEmptyResults: true, testResults: 'services/user-service/tests/test-results/*.xml'
                         }
                     }
                 }
@@ -42,13 +42,13 @@ pipeline {
                         dir('services/incident-report-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/incident-report-service/test-results/*.xml'
+                           junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/test-results/*.xml'
                         }
                     }
                 }
@@ -58,13 +58,13 @@ pipeline {
                         dir('services/notification-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/notification-service/test-results/*.xml'
+                             junit allowEmptyResults: true, testResults: 'services/notification-service/tests/test-results/*.xml'
                         }
                     }
                 }
@@ -74,13 +74,14 @@ pipeline {
                         dir('services/traffic-intelligence-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/test-results/*.xml'
+                            
                         }
                     }
                 }
@@ -90,7 +91,7 @@ pipeline {
                         dir('services/api-gateway') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
                     }
