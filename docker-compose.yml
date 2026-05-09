@@ -190,6 +190,29 @@ services:
       notification-service:
         condition: service_started
 
+
+
+
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: urbanflow_jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root                          # needed to access docker socket
+    ports:
+      - "8080:8080"                     # Jenkins web UI
+      - "50000:50000"                   # Jenkins agent communication port
+    volumes:
+      - jenkins_data:/var/jenkins_home  # persists all Jenkins config/jobs
+      - /var/run/docker.sock:/var/run/docker.sock   # lets Jenkins run docker commands
+      - /usr/bin/docker:/usr/bin/docker             # docker binary itself
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+    networks:
+      - urbanflow_network
+
+
 # ── VOLUMES ────────────────────────────────────────────────
 # Named volumes persist data across container restarts.
 # Deleting a volume wipes that database permanently.
@@ -201,6 +224,8 @@ volumes:
     name: urbanflow_mongo_data
   redis_data:
     name: urbanflow_redis_data
+  jenkins_data:
+    name: urbanflow_jenkins_data 
 
 # ── NETWORK ────────────────────────────────────────────────
 # One shared bridge network. All containers resolve each
