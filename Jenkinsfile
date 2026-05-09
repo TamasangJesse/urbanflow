@@ -26,7 +26,7 @@ pipeline {
                         dir('services/user-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
                             '''
                         }
                     }
@@ -42,7 +42,7 @@ pipeline {
                         dir('services/incident-report-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
                             '''
                         }
                     }
@@ -58,7 +58,7 @@ pipeline {
                         dir('services/notification-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
                             '''
                         }
                     }
@@ -74,7 +74,7 @@ pipeline {
                         dir('services/traffic-intelligence-service') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
                             '''
                         }
                     }
@@ -90,7 +90,7 @@ pipeline {
                         dir('services/api-gateway') {
                             sh '''
                                 pip install -r requirements.txt --quiet
-                                pytest tests/ --cov=app --cov-report=xml -v
+                                pytest tests/ --cov=app --cov-report=xml --junitxml=test-results.xml -v
                             '''
                         }
                     }
