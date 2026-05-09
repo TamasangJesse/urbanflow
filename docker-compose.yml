@@ -207,6 +207,7 @@ services:
       - jenkins_data:/var/jenkins_home  # persists all Jenkins config/jobs
       - /var/run/docker.sock:/var/run/docker.sock   # lets Jenkins run docker commands
       - /usr/bin/docker:/usr/bin/docker             # docker binary itself
+      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins 
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
     networks:
