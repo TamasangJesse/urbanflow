@@ -17,7 +17,7 @@ pipeline {
                     steps {
                         dir('services/user-service') {
                             sh '''
-                                pip3 install -r requirements.txt --quiet
+                                pip3 install -r requirements.txt --quiet --break-system-packages
                                 python3 -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
@@ -33,7 +33,7 @@ pipeline {
                     steps {
                         dir('services/incident-report-service') {
                             sh '''
-                                pip3 install -r requirements.txt --quiet
+                                pip3 install -r requirements.txt --quiet --break-system-packages
                                 python3 -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
@@ -49,7 +49,7 @@ pipeline {
                     steps {
                         dir('services/notification-service') {
                             sh '''
-                                pip3 install -r requirements.txt --quiet
+                                pip3 install -r requirements.txt --quiet --break-system-packages
                                 python3 -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
@@ -65,7 +65,7 @@ pipeline {
                     steps {
                         dir('services/traffic-intelligence-service') {
                             sh '''
-                                pip3 install -r requirements.txt --quiet
+                                pip3 install -r requirements.txt --quiet --break-system-packages
                                 python3 -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
@@ -81,7 +81,7 @@ pipeline {
                     steps {
                         dir('services/api-gateway') {
                             sh '''
-                                pip3 install -r requirements.txt --quiet
+                                pip3 install -r requirements.txt --quiet --break-system-packages
                                 python3 -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v
                             '''
                         }
