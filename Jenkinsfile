@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        ROOT_ENV                 = credentials('root-env')
         USER_SERVICE_ENV         = credentials('user-service-env')
         INCIDENT_SERVICE_ENV     = credentials('incident-report-service-env')
         NOTIFICATION_SERVICE_ENV = credentials('notification-service-env')
@@ -20,6 +21,7 @@ pipeline {
 
         stage('Prepare Env Files') {
             steps {
+                sh 'cp $ROOT_ENV .env'
                 sh 'cp $USER_SERVICE_ENV services/user-service/.env'
                 sh 'cp $INCIDENT_SERVICE_ENV services/incident-report-service/.env'
                 sh 'cp $NOTIFICATION_SERVICE_ENV services/notification-service/.env'
@@ -40,7 +42,7 @@ pipeline {
 
                 stage('Test: user-service') {
                     steps {
-                        sh 'docker compose run --rm user-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
+                        sh 'docker compose run --rm --no-deps user-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -51,7 +53,7 @@ pipeline {
 
                 stage('Test: incident-report-service') {
                     steps {
-                        sh 'docker compose run --rm incident-report-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
+                        sh 'docker compose run --rm --no-deps incident-report-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -62,7 +64,7 @@ pipeline {
 
                 stage('Test: notification-service') {
                     steps {
-                        sh 'docker compose run --rm notification-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
+                        sh 'docker compose run --rm --no-deps notification-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -73,7 +75,7 @@ pipeline {
 
                 stage('Test: traffic-intelligence-service') {
                     steps {
-                        sh 'docker compose run --rm traffic-intelligence-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
+                        sh 'docker compose run --rm --no-deps traffic-intelligence-service python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
@@ -84,7 +86,7 @@ pipeline {
 
                 stage('Test: api-gateway') {
                     steps {
-                        sh 'docker compose run --rm api-gateway python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
+                        sh 'docker compose run --rm --no-deps api-gateway python -m pytest tests/ --cov=app --cov-report=xml --junitxml=tests/test-results/results.xml -v'
                     }
                     post {
                         always {
