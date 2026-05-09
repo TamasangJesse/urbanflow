@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: urbanflow_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-service:
+    build: .
+    container_name: urbanflow_notification_service
+    ports:
+      - "8003:8003"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_PORT=8003
+      - INCIDENT_STREAM_NAME=incident_stream
+      - NOTIFICATION_TTL_SECONDS=86400
+      - GEOFENCE_RADIUS_METRES=5000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  urbanflow_network:
+    external: true  

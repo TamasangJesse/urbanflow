@@ -19,7 +19,7 @@ dist/
 build/
 .env.local
 .env.production
-
+.env.example
 # ML
 *.pkl
 *.joblib

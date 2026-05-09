@@ -1,0 +1,35 @@
+services:
+  user-db:
+    image: postgres:16-alpine
+    container_name: urbanflow_user_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urbanflow -d userservice_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: .
+    container_name: urbanflow_user_service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      REDIS_URL: ${REDIS_URL}
+    depends_on:
+      user-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  user_db_data:
+  

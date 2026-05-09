@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+motor
+redis
+pydantic
+python-dotenv
+pytest
+pytest-asyncio
+httpx

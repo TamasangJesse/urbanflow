@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+
+  mongo:
+    image: mongo:7
+    container_name: urbanflow_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7
+    container_name: urbanflow_redis
+    ports:
+      - "6379:6379"
+
+  incident_service:
+    build: .
+    container_name: urbanflow_incident
+    ports:
+      - "8004:8004"
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+
+volumes:
+  mongo_data:
+
+networks:
+  urbanflow_network:
+    
