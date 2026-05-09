@@ -1,10 +1,7 @@
 pipeline {
     agent any
 
-    environment {
-        COMPOSE_FILE = 'docker-compose.yml'
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-    }
+    
 
     stages {
 
