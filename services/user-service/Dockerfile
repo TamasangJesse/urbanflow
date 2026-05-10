@@ -12,4 +12,9 @@ COPY tests/ ./tests/
 
 EXPOSE 8001
 
+
+RUN addgroup --system urbanflow && adduser --system --ingroup urbanflow urbanflow
+RUN chown -R urbanflow:urbanflow /app
+USER urbanflow
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
