@@ -28,6 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
 COPY app/ ./app/
+COPY tests/ ./tests/
 
 # Copy the seed script (run manually via docker exec, not at container start)
 COPY datasets/seed_traffic_data.py ./datasets/seed_traffic_data.py

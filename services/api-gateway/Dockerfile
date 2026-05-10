@@ -31,6 +31,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 # Copy application source.
 COPY app/ ./app/
+COPY tests/ ./tests/
 
 # Set the venv on PATH so python and uvicorn resolve from it.
 ENV PATH="/opt/venv/bin:$PATH"
