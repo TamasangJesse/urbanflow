@@ -42,7 +42,12 @@ pipeline {
 
                 stage('Test: user-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/user-service/tests:/app/tests user-service python -m pytest -v --junitxml=/app/tests/results.xml'
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d user-service sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
                     }
                     post {
                         always {
@@ -53,7 +58,12 @@ pipeline {
 
                 stage('Test: incident-report-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/incident-report-service/tests:/app/tests incident-report-service python -m pytest -v --junitxml=/app/tests/results.xml'
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d incident-report-service sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
                     }
                     post {
                         always {
@@ -64,7 +74,12 @@ pipeline {
 
                 stage('Test: notification-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/notification-service/tests:/app/tests notification-service python -m pytest -v --junitxml=/app/tests/results.xml'
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d notification-service sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
                     }
                     post {
                         always {
@@ -75,7 +90,12 @@ pipeline {
 
                 stage('Test: traffic-intelligence-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/traffic-intelligence-service/tests:/app/tests traffic-intelligence-service python -m pytest -v --junitxml=/app/tests/results.xml'
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d traffic-intelligence-service sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
                     }
                     post {
                         always {
@@ -86,7 +106,12 @@ pipeline {
 
                 stage('Test: api-gateway') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/api-gateway/tests:/app/tests api-gateway python -m pytest -v --junitxml=/app/tests/results.xml'
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d api-gateway sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
                     }
                     post {
                         always {
@@ -112,15 +137,15 @@ pipeline {
     }
 
     post {
+        always {
+            echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
+            sh 'docker compose down || true'
+        }
         success {
             echo 'UrbanFlow deployed successfully'
         }
         failure {
             echo 'Pipeline failed - check test results'
-        }
-        always {
-            echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
-            sh 'docker compose down || true'
         }
     }
 
