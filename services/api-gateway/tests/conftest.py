@@ -1,6 +1,6 @@
 import sys
 import os
-
+import pytest_asyncio 
 # Tell Python where to find the app modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -71,9 +71,7 @@ def mock_redis():
 # Spins up the FastAPI app with a fake Redis and a fake httpx client
 # so no real network calls are made during tests.
 # =============================================================================
-
-@pytest.fixture
-@pytest.mark.asyncio
+@pytest_asyncio.fixture  
 async def client(mock_redis):
    
     from app.main import app
