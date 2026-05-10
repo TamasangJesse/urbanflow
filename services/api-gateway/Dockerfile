@@ -33,6 +33,9 @@ COPY --from=builder /opt/venv /opt/venv
 COPY app/ ./app/
 COPY tests/ ./tests/
 
+RUN chown -R urbanflow:urbanflow /app/tests
+
+
 # Set the venv on PATH so python and uvicorn resolve from it.
 ENV PATH="/opt/venv/bin:$PATH"
 
