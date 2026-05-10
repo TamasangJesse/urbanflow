@@ -42,55 +42,55 @@ pipeline {
 
                 stage('Test: user-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v $(pwd)/services/user-service/tests:/app/tests user-service python -m pytest -v'
+                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/user-service/tests:/app/tests user-service python -m pytest -v --junitxml=/app/tests/results.xml'
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/user-service/tests/reports/results.xml'
+                            junit allowEmptyResults: true, testResults: 'services/user-service/tests/results.xml'
                         }
                     }
                 }
 
                 stage('Test: incident-report-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v $(pwd)/services/incident-report-service/tests:/app/tests incident-report-service python -m pytest -v'
+                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/incident-report-service/tests:/app/tests incident-report-service python -m pytest -v --junitxml=/app/tests/results.xml'
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/reports/results.xml'
+                            junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/results.xml'
                         }
                     }
                 }
 
                 stage('Test: notification-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v $(pwd)/services/notification-service/tests:/app/tests notification-service python -m pytest -v'
+                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/notification-service/tests:/app/tests notification-service python -m pytest -v --junitxml=/app/tests/results.xml'
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/notification-service/tests/reports/results.xml'
+                            junit allowEmptyResults: true, testResults: 'services/notification-service/tests/results.xml'
                         }
                     }
                 }
 
                 stage('Test: traffic-intelligence-service') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v $(pwd)/services/traffic-intelligence-service/tests:/app/tests traffic-intelligence-service python -m pytest -v'
+                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/traffic-intelligence-service/tests:/app/tests traffic-intelligence-service python -m pytest -v --junitxml=/app/tests/results.xml'
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/reports/results.xml'
+                            junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/results.xml'
                         }
                     }
                 }
 
                 stage('Test: api-gateway') {
                     steps {
-                        sh 'docker compose run --rm --no-deps -v $(pwd)/services/api-gateway/tests:/app/tests api-gateway python -m pytest -v'
+                        sh 'docker compose run --rm --no-deps -v ${WORKSPACE}/services/api-gateway/tests:/app/tests api-gateway python -m pytest -v --junitxml=/app/tests/results.xml'
                     }
                     post {
                         always {
-                            junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/reports/results.xml'
+                            junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
                         }
                     }
                 }
