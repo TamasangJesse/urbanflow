@@ -32,7 +32,7 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy application source.
 COPY app/ ./app/
 COPY tests/ ./tests/
-COPY pytest.ini . 
+
 
 RUN chown -R urbanflow:urbanflow /app/tests
 
