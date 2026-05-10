@@ -73,6 +73,7 @@ def mock_redis():
 # =============================================================================
 
 @pytest.fixture
+@pytest.mark.asyncio
 async def client(mock_redis):
    
     from app.main import app
