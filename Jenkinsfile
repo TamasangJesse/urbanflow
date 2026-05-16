@@ -37,7 +37,10 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building all Docker images...'
-                sh 'docker compose -p urbanflow build'
+                sh '''
+                    set -a && source .env && set +a
+                    docker compose -p urbanflow build
+                '''
             }
         }
 
@@ -48,14 +51,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d user-service sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/user-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/user-service/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/user-service/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -64,14 +74,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d incident-report-service sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/incident-report-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/incident-report-service/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -80,14 +97,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d notification-service sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/notification-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/notification-service/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/notification-service/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -96,14 +120,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d traffic-intelligence-service sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/traffic-intelligence-service/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -112,14 +143,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d api-gateway sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/api-gateway/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/api-gateway/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -128,14 +166,21 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d rag-service sleep 60)
-                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker exec $CONTAINER python -m pytest -v \
+                                --junitxml=/tmp/results.xml \
+                                --cov=app \
+                                --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
+                            docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/rag-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
                         '''
                     }
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/rag-service/tests/results.xml'
+                            recordCoverage(
+                                tools: [[parser: 'COBERTURA', pattern: 'services/rag-service/tests/coverage.xml']]
+                            )
                         }
                     }
                 }
@@ -149,8 +194,11 @@ pipeline {
             }
             steps {
                 echo 'Deploying UrbanFlow to production...'
-                sh 'docker compose -p urbanflow down'
-                sh 'docker compose -p urbanflow up -d'
+                sh '''
+                    set -a && source .env && set +a
+                    docker compose -p urbanflow down
+                    docker compose -p urbanflow up -d
+                '''
             }
         }
 
@@ -159,7 +207,7 @@ pipeline {
     post {
         always {
             echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
-            sh 'docker compose down || true'
+            sh 'docker compose -p urbanflow down || true'
         }
         success {
             echo 'UrbanFlow deployed successfully'
