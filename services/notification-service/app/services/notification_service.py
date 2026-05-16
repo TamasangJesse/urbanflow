@@ -26,6 +26,7 @@ class NotificationService:
         self,
         incident_lat: float,
         incident_lng: float,
+        exclude_user_id: str | None = None, 
         radius_metres: float = settings.geofence_radius_metres,
     ) -> list[str]:
         """
@@ -46,6 +47,8 @@ class NotificationService:
         for user_id in user_ids:
             location = await self._repo.get_user_location(user_id)
             if location is None:
+                if user_id == exclude_user_id:
+                     continue  
                 continue  # Location expired or malformed — skip
 
             user_lat, user_lng = location
@@ -93,7 +96,12 @@ class NotificationService:
         Returns:
             Number of users notified.
         """
-        nearby_users = await self.find_nearby_users(event.latitude, event.longitude)
+        
+        nearby_users = await self.find_nearby_users(
+             event.latitude,
+             event.longitude,
+             exclude_user_id=event.reported_by,
+              )
 
         for user_id in nearby_users:
             await self.push_notification(user_id, event)

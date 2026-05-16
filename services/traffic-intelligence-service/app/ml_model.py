@@ -196,26 +196,46 @@ def predict_congestion(
     day_of_week: str,
     hour: int,
     model_bundle: dict,
+    active_incident_boosts: dict | None = None,
 ) -> dict:
     """
     Run a single prediction using the loaded model bundle.
     Called by GET /predict on every request.
 
+    Checks active_incident_boosts FIRST before calling the ML model.
+    If an active, non-expired incident boost exists for this location,
+    returns the boosted congestion level immediately — model is not called.
+
     model_bundle — the dict returned by load_model():
-        {
-          "model":         RandomForestClassifier,
-          "label_encoder": LabelEncoder
-        }
+        {"model": RandomForestClassifier, "label_encoder": LabelEncoder}
+
+    active_incident_boosts — module-level dict managed by consume_incident_stream():
+        {"Bastos": {"congestion_level": "Very High", "expires_at": datetime}}
 
     Returns:
-        {
-          "location":          str,
-          "day_of_week":       str,
-          "hour":              int,
-          "congestion_level":  str,   e.g. "High"
-          "confidence":        float  e.g. 0.87
-        }
+        {"location": str, "day_of_week": str, "hour": int,
+         "congestion_level": str, "confidence": float, "boosted": bool}
     """
+    from datetime import datetime
+
+    # ── Incident boost check — runs BEFORE the ML model ──────────────────────
+    if active_incident_boosts:
+        boost = active_incident_boosts.get(location_name)
+        if boost and boost["expires_at"] > datetime.utcnow():
+            logger.info(
+                "Incident boost active for '%s' — returning '%s' without calling model.",
+                location_name, boost["congestion_level"],
+            )
+            return {
+                "location":         location_name,
+                "day_of_week":      day_of_week,
+                "hour":             hour,
+                "congestion_level": boost["congestion_level"],
+                "confidence":       1.0,
+                "boosted":          True,
+            }
+
+    # ── ML model prediction ───────────────────────────────────────────────────
     clf           = model_bundle["model"]
     label_encoder = model_bundle["label_encoder"]
 
@@ -229,9 +249,9 @@ def predict_congestion(
     X = encode_features(record)
 
     # Predict class and confidence (highest class probability)
-    prediction_idx  = clf.predict(X)[0]
-    probabilities   = clf.predict_proba(X)[0]
-    confidence      = round(float(probabilities.max()), 4)
+    prediction_idx   = clf.predict(X)[0]
+    probabilities    = clf.predict_proba(X)[0]
+    confidence       = round(float(probabilities.max()), 4)
     congestion_label = label_encoder.inverse_transform([prediction_idx])[0]
 
     return {
@@ -240,4 +260,5 @@ def predict_congestion(
         "hour":             hour,
         "congestion_level": congestion_label,
         "confidence":       confidence,
+        "boosted":          False,
     }

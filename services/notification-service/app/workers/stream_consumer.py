@@ -109,8 +109,9 @@ async def _process_message(
             type=fields["type"],
             latitude=float(fields["latitude"]),
             longitude=float(fields["longitude"]),
-            severity=fields["severity"],
+            severity=fields["severity"].lower(),
             created_at=fields["created_at"],
+            reported_by=fields.get("reported_by"),
         )
 
         notified_count = await service.notify_nearby_users(event)

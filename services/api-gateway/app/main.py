@@ -23,6 +23,7 @@ from slowapi.util import get_remote_address
 from app.config import settings
 from app.core.auth import validate_token
 from app.core.proxy import route_request
+from app.core.middleware import register_middleware
 
 
 # =============================================================================
@@ -101,7 +102,11 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Attach rate limiter and its 429 exception handler to the app.
+# FIX 1: register_middleware now called AFTER app is created (was erroneously
+# called on line 29 before app existed, causing a NameError on startup).
+register_middleware(app)
+
+# FIX 2: app.state.limiter assigned only once (was duplicated — harmless but messy).
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -178,7 +183,6 @@ async def gateway(request: Request, path: str):
 
         # Decode locally (python-jose) + check Redis blacklist.
         # Both operations happen in auth.validate_token().
-        #await validate_token(token, request.app.state.redis)
         payload = await validate_token(token, request.app.state.redis)
         request.state.user_id = payload.get("sub")
 

@@ -15,6 +15,8 @@ os.environ["DATABASE_URL"] = "postgresql://urbanflow:test@localhost:5432/urbanfl
 os.environ["MODEL_PATH"]   = "/tmp/test_model.pkl"
 os.environ["SECRET_KEY"]   = "test_secret_key"
 
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+
 
 @pytest.fixture
 def mock_model_bundle():

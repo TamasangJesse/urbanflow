@@ -119,6 +119,7 @@ class PredictResponse(BaseModel):
     hour:             int
     congestion_level: str
     confidence:       float
+    boosted:          bool = False
 
 
 class ModelStatusResponse(BaseModel):

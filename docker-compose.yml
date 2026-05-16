@@ -132,6 +132,7 @@ services:
     environment:
       DATABASE_URL: postgresql://urbanflow:urbanflow_pg_pass_2026@postgres:5432/urbanflow_traffic
       MODEL_PATH: /app/ml_model/model.pkl
+      REDIS_URL: redis://:urbanflow_redis_pass_2026@urbanflow_redis:6379/0
     ports:
       - "8002:8002"
     networks:
@@ -189,6 +190,48 @@ services:
         condition: service_started
       notification-service:
         condition: service_started
+  rag-service:
+    build:
+      context: ./services/rag-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_rag_service
+    restart: unless-stopped
+    env_file:
+      - ./services/rag-service/.env
+    environment:
+      MONGODB_URL: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/urbanflow_rag?authSource=admin
+      SECRET_KEY: ${SECRET_KEY}
+      INCIDENT_SERVICE_URL: http://incident-report-service:8004
+      TRAFFIC_SERVICE_URL: http://traffic-intelligence-service:8002
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8005:8005"
+    networks:
+      - urbanflow_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      incident-report-service:
+        condition: service_started
+      traffic-intelligence-service:
+        condition: service_started
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}
+        VITE_API_BASE_URL: https://urbanflow.duckdns.org/api
+    container_name: urbanflow_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - urbanflow_network
+    depends_on:
+      - api-gateway
 
 
 
@@ -236,3 +279,8 @@ networks:
   urbanflow_network:
     name: urbanflow_network
     driver: bridge
+
+
+
+
+

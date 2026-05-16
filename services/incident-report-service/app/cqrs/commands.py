@@ -28,6 +28,7 @@ async def cmd_report_incident(data: dict) -> dict:
         latitude      = data["latitude"],
         longitude     = data["longitude"],
         severity      = data["severity"]
+        reported_by   = data["reported_by"]
     )
 
     return {"incident_id": incident_id}

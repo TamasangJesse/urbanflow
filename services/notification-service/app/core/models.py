@@ -16,6 +16,7 @@ class IncidentEvent(BaseModel):
     longitude: float
     severity: Literal["low", "medium", "high", "critical"]
     created_at: datetime
+    reported_by: str | None = None
 
 
 class Notification(BaseModel):
