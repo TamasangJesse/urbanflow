@@ -85,7 +85,7 @@ class TestHealth:
 class TestLocations:
 
     def test_get_locations_returns_200(self):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_distinct_locations.return_value = [
                 "Bastos", "Mokolo Market", "Rond Point Express"
             ]
@@ -94,7 +94,7 @@ class TestLocations:
 
     def test_get_locations_response_shape(self):
         expected = ["Bastos", "Mokolo Market", "Rond Point Express"]
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_distinct_locations.return_value = expected
             response = client.get("/locations")
         data = response.json()
@@ -102,7 +102,7 @@ class TestLocations:
         assert data["total"]     == 3
 
     def test_get_locations_empty_db(self):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_distinct_locations.return_value = []
             response = client.get("/locations")
         data = response.json()
@@ -117,13 +117,13 @@ class TestLocations:
 class TestGetTrafficData:
 
     def test_get_all_records_returns_200(self, mock_traffic_record):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_all_traffic_records.return_value = [mock_traffic_record]
             response = client.get("/traffic-data")
         assert response.status_code == 200
 
     def test_get_all_records_returns_list(self, mock_traffic_record):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_all_traffic_records.return_value = [mock_traffic_record]
             response = client.get("/traffic-data")
         data = response.json()
@@ -132,7 +132,7 @@ class TestGetTrafficData:
         assert data[0]["location_name"] == "Bastos"
 
     def test_get_records_filtered_by_location(self, mock_traffic_record):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_traffic_records_by_location.return_value = [mock_traffic_record]
             response = client.get("/traffic-data?location=Bastos")
         assert response.status_code == 200
@@ -140,7 +140,7 @@ class TestGetTrafficData:
         assert data[0]["location_name"] == "Bastos"
 
     def test_get_records_empty_result(self):
-        with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.routes.TrafficQueryRepository") as MockRepo:
             MockRepo.return_value.get_all_traffic_records.return_value = []
             response = client.get("/traffic-data")
         assert response.status_code == 200
@@ -154,7 +154,7 @@ class TestGetTrafficData:
 class TestPostTrafficData:
 
     def test_create_record_returns_201(self, mock_traffic_record):
-        with patch("app.main.TrafficCommandRepository") as MockRepo:
+        with patch("app.routes.TrafficCommandRepository") as MockRepo:
             MockRepo.return_value.insert_traffic_record.return_value = mock_traffic_record
             response = client.post("/traffic-data", json={
                 "location_name":    "Bastos",
@@ -168,7 +168,7 @@ class TestPostTrafficData:
         assert response.status_code == 201
 
     def test_create_record_response_body(self, mock_traffic_record):
-        with patch("app.main.TrafficCommandRepository") as MockRepo:
+        with patch("app.routes.TrafficCommandRepository") as MockRepo:
             MockRepo.return_value.insert_traffic_record.return_value = mock_traffic_record
             response = client.post("/traffic-data", json={
                 "location_name":    "Bastos",
@@ -244,12 +244,12 @@ class TestPredict:
     }
 
     def test_predict_returns_200_when_model_loaded(self, mock_model_bundle):
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=self.VALID_PARAMS)
         assert response.status_code == 200
 
     def test_predict_response_shape(self, mock_model_bundle):
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=self.VALID_PARAMS)
         data = response.json()
         assert "location"         in data
@@ -259,30 +259,30 @@ class TestPredict:
         assert "confidence"       in data
 
     def test_predict_returns_503_when_model_not_loaded(self):
-        with patch("app.main._model_bundle", None):
+        with patch("app.state._model_bundle", None):
             response = client.get("/predict", params=self.VALID_PARAMS)
         assert response.status_code == 503
 
     def test_predict_correct_location_in_response(self, mock_model_bundle):
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=self.VALID_PARAMS)
         assert response.json()["location"] == "Carrefour Warda"
 
     def test_predict_confidence_between_0_and_1(self, mock_model_bundle):
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=self.VALID_PARAMS)
         confidence = response.json()["confidence"]
         assert 0.0 <= confidence <= 1.0
 
     def test_predict_invalid_day_returns_422(self, mock_model_bundle):
         params = {**self.VALID_PARAMS, "day_of_week": "Funday"}
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=params)
         assert response.status_code == 422
 
     def test_predict_invalid_hour_returns_422(self, mock_model_bundle):
         params = {**self.VALID_PARAMS, "hour": 25}
-        with patch("app.main._model_bundle", mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle):
             response = client.get("/predict", params=params)
         assert response.status_code == 422
 
@@ -294,33 +294,33 @@ class TestPredict:
 class TestModelStatus:
 
     def test_status_ready_when_model_loaded(self, mock_model_bundle, mock_training_summary):
-        with patch("app.main._model_bundle", mock_model_bundle), \
-             patch("app.main._training_summary", mock_training_summary):
-            with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state._training_summary", mock_training_summary):
+            with patch("app.routes.TrafficQueryRepository") as MockRepo:
                 MockRepo.return_value.get_record_count.return_value = 6384
                 response = client.get("/model/status")
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
 
     def test_status_not_trained_when_model_missing(self):
-        with patch("app.main._model_bundle", None), \
-             patch("app.main._training_summary", None):
+        with patch("app.state._model_bundle", None), \
+             patch("app.state._training_summary", None):
             response = client.get("/model/status")
         assert response.status_code == 200
         assert response.json()["status"] == "not_trained"
 
     def test_status_contains_accuracy(self, mock_model_bundle, mock_training_summary):
-        with patch("app.main._model_bundle", mock_model_bundle), \
-             patch("app.main._training_summary", mock_training_summary):
-            with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state._training_summary", mock_training_summary):
+            with patch("app.routes.TrafficQueryRepository") as MockRepo:
                 MockRepo.return_value.get_record_count.return_value = 6384
                 response = client.get("/model/status")
         assert response.json()["test_accuracy"] == 0.89
 
     def test_status_contains_classes(self, mock_model_bundle, mock_training_summary):
-        with patch("app.main._model_bundle", mock_model_bundle), \
-             patch("app.main._training_summary", mock_training_summary):
-            with patch("app.main.TrafficQueryRepository") as MockRepo:
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state._training_summary", mock_training_summary):
+            with patch("app.routes.TrafficQueryRepository") as MockRepo:
                 MockRepo.return_value.get_record_count.return_value = 6384
                 response = client.get("/model/status")
         assert "classes" in response.json()
@@ -333,14 +333,14 @@ class TestModelStatus:
 class TestRetrain:
 
     def test_retrain_returns_200(self, mock_model_bundle, mock_training_summary):
-        with patch("app.main.train_model", return_value=mock_training_summary), \
-             patch("app.main.load_model",  return_value=mock_model_bundle):
+        with patch("app.routes.train_model", return_value=mock_training_summary), \
+             patch("app.routes.load_model",  return_value=mock_model_bundle):
             response = client.post("/model/retrain")
         assert response.status_code == 200
 
     def test_retrain_response_shape(self, mock_model_bundle, mock_training_summary):
-        with patch("app.main.train_model", return_value=mock_training_summary), \
-             patch("app.main.load_model",  return_value=mock_model_bundle):
+        with patch("app.routes.train_model", return_value=mock_training_summary), \
+             patch("app.routes.load_model",  return_value=mock_model_bundle):
             response = client.post("/model/retrain")
         data = response.json()
         assert data["status"]        == "trained"
@@ -350,7 +350,7 @@ class TestRetrain:
         assert "model_path"          in data
 
     def test_retrain_fails_with_no_data(self):
-        with patch("app.main.train_model", side_effect=RuntimeError("Not enough training data")):
+        with patch("app.routes.train_model", side_effect=RuntimeError("Not enough training data")):
             response = client.post("/model/retrain")
         assert response.status_code == 400
         assert "Not enough training data" in response.json()["detail"]
