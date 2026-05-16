@@ -8,6 +8,8 @@ pipeline {
         NOTIFICATION_SERVICE_ENV = credentials('notification-service-env')
         TRAFFIC_SERVICE_ENV      = credentials('traffic-intelligence-service-env')
         API_GATEWAY_ENV          = credentials('api-gateway-env')
+        RAG_SERVICE_ENV          = credentials('rag-service-env')
+        FRONTEND_ENV             = credentials('frontend-env')
     }
 
     stages {
@@ -27,6 +29,8 @@ pipeline {
                 sh 'cp $NOTIFICATION_SERVICE_ENV services/notification-service/.env'
                 sh 'cp $TRAFFIC_SERVICE_ENV services/traffic-intelligence-service/.env'
                 sh 'cp $API_GATEWAY_ENV services/api-gateway/.env'
+                sh 'cp $RAG_SERVICE_ENV services/rag-service/.env'
+                sh 'cp $FRONTEND_ENV frontend/.env'
             }
         }
 
@@ -116,6 +120,22 @@ pipeline {
                     post {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
+                        }
+                    }
+                }
+
+                stage('Test: rag-service') {
+                    steps {
+                        sh '''
+                            CONTAINER=$(docker compose run --rm --no-deps -d rag-service sleep 60)
+                            docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
+                            docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
+                            docker stop $CONTAINER || true
+                        '''
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'services/rag-service/tests/results.xml'
                         }
                     }
                 }
