@@ -37,7 +37,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building all Docker images...'
-                sh 'docker compose build'
+                sh 'docker compose -p urbanflow build'
             }
         }
 
@@ -47,7 +47,7 @@ pipeline {
                 stage('Test: user-service') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d user-service sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d user-service sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -63,7 +63,7 @@ pipeline {
                 stage('Test: incident-report-service') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d incident-report-service sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d incident-report-service sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -79,7 +79,7 @@ pipeline {
                 stage('Test: notification-service') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d notification-service sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d notification-service sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -95,7 +95,7 @@ pipeline {
                 stage('Test: traffic-intelligence-service') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d traffic-intelligence-service sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d traffic-intelligence-service sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -111,7 +111,7 @@ pipeline {
                 stage('Test: api-gateway') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d api-gateway sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d api-gateway sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -127,7 +127,7 @@ pipeline {
                 stage('Test: rag-service') {
                     steps {
                         sh '''
-                            CONTAINER=$(docker compose run --rm --no-deps -d rag-service sleep 60)
+                            CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d rag-service sleep 60)
                             docker exec $CONTAINER python -m pytest -v --junitxml=/tmp/results.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
                             docker stop $CONTAINER || true
@@ -149,8 +149,8 @@ pipeline {
             }
             steps {
                 echo 'Deploying UrbanFlow to production...'
-                sh 'docker compose down'
-                sh 'docker compose up -d'
+                sh 'docker compose -p urbanflow down'
+                sh 'docker compose -p urbanflow up -d'
             }
         }
 
