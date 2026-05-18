@@ -1,5 +1,5 @@
 // UrbanFlow — ChatPanel.jsx
-// Sliding RAG chat panel — opens from the right, pushes map left.
+// Sliding RAG chat panel — opens from the right, pushes map pushes map tp the left
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
