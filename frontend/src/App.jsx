@@ -17,6 +17,7 @@ const MapPage            = lazy(() => import('./features/map/MapPage'));
 const ReportPage         = lazy(() => import('./features/report/ReportPage'));
 const NotificationsPage  = lazy(() => import('./features/notifications/NotificationsPage'));
 const ProfilePage        = lazy(() => import('./features/profile/ProfilePage'));
+import { ChatPanelProvider } from './context/ChatPanelContext'; 
 
 /**
  * PublicOnlyRoute — redirects to /map if already logged in.
@@ -74,7 +75,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ChatPanelProvider>
+          <AppRoutes />
+        </ChatPanelProvider>
       </AuthProvider>
     </BrowserRouter>
   );

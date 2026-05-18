@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     TRAFFIC_SERVICE_URL: str
     NOTIFICATION_SERVICE_URL: str
     INCIDENT_SERVICE_URL: str
+    RAG_SERVICE_URL: str
 
     class Config:
         env_file = ".env"

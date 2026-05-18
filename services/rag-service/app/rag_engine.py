@@ -79,7 +79,7 @@ Your answer:
     try:
         gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = gemini_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
         answer = response.text

@@ -175,6 +175,7 @@ services:
       INCIDENT_SERVICE_URL: http://incident-report-service:8004
       TRAFFIC_SERVICE_URL: http://traffic-intelligence-service:8002
       NOTIFICATION_SERVICE_URL: http://notification-service:8003
+      RAG_SERVICE_URL:  http://rag-service:8005
     ports:
       - "8000:8000"
     networks:

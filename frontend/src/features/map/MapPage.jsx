@@ -5,12 +5,14 @@
 // useMapsLibrary to access the native Google Maps DirectionsRenderer directly.
 
 import { useState, useRef, useEffect } from 'react';
-import { APIProvider, Map, Marker, useMap as useGoogleMap, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, Marker, AdvancedMarker, useMap as useGoogleMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 import Navbar from '../../components/Navbar';
 import Button from '../../components/Button';
 import CongestionPill from '../../components/CongestionPill';
 import { useMap } from './useMap';
 import { MAPS_LOADER_CONFIG } from '../../lib/constants';
+import { useChatPanel } from '../../context/ChatPanelContext';
+import ChatPanel from '../../features/rag/ChatPanel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -327,6 +329,31 @@ function MapPageInner() {
           {incidents.filter((i) => i.latitude && i.longitude).map((inc, i) => (
             <Marker key={inc.id || i} position={{ lat: inc.latitude, lng: inc.longitude }} title={inc.type} />
           ))}
+
+          {/* Detected incident on route — big red danger marker */}
+          {detectedIncident?.latitude && detectedIncident?.longitude && (
+            <AdvancedMarker
+              position={{ lat: detectedIncident.latitude, lng: detectedIncident.longitude }}
+              title={`⚠️ ${detectedIncident.type}: ${detectedIncident.description}`}
+            >
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: '#EF4444',
+                border: '3px solid white',
+                boxShadow: '0 4px 12px rgba(239,68,68,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                animation: 'pulse 1.5s infinite',
+              }}>
+                ⚠️
+              </div>
+            </AdvancedMarker>
+          )}
+
           <DirectionsLayer directionsResult={directionsResult} />
         </Map>
 
@@ -345,12 +372,19 @@ function MapPageInner() {
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
+
+
 export default function MapPage() {
+  const { isOpen, close } = useChatPanel();
+
   return (
     <APIProvider apiKey={MAPS_LOADER_CONFIG.apiKey} libraries={MAPS_LOADER_CONFIG.libraries}>
-      <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex flex-col h-screen bg-[#F7F6F2] overflow-hidden">
         <Navbar />
-        <MapPageInner />
+        <div className="flex flex-1 overflow-hidden">
+          <MapPageInner />
+          <ChatPanel open={isOpen} onClose={close} />
+        </div>
       </div>
     </APIProvider>
   );

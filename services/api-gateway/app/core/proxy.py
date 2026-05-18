@@ -13,6 +13,7 @@ Service routing table (from the architecture doc):
   /model/*         → Traffic Intelligence  :8002
   /incidents/*     → Incident Report       :8004
   /notifications/* → Notification Service  :8003
+  /chat/* Rag Service : 8005
 """
 
 import httpx
@@ -38,6 +39,7 @@ def _build_routing_table() -> list[tuple[str, str]]:
         "/model":          settings.TRAFFIC_SERVICE_URL,
         "/incidents":      settings.INCIDENT_SERVICE_URL,
         "/notifications":  settings.NOTIFICATION_SERVICE_URL,
+        "/chat":           settings.RAG_SERVICE_URL,
     }
     # Sort by prefix length descending — longest match wins.
     return sorted(raw.items(), key=lambda item: len(item[0]), reverse=True)

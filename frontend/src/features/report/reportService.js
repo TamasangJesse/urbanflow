@@ -4,11 +4,9 @@
 import apiClient from '../../lib/apiClient';
 
 const reportService = {
-  /**
-   * POST /incidents
-   * @param {{ type, description, latitude, longitude, severity, reported_by }} incidentData
-   */
   submitIncident: (incidentData) => apiClient.post('/incidents', incidentData),
-};
+ 
+  getUserIncidents: (userId) => apiClient.get(`/incidents?reported_by=${userId}`),
+   }
 
 export default reportService;

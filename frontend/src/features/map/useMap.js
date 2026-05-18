@@ -1,21 +1,14 @@
 // UrbanFlow — useMap.js
 // Layer 2 (Logic): Route inputs, prediction results, incidents, rerouting state.
-// No JSX. Calls mapService only.
+// Fix: persists route + prediction to localStorage so state survives navigation.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
 import mapService from './mapService';
 import { ROUTE_CHECK_INTERVAL } from '../../lib/constants';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Convert "Now" / "8:00 AM" to a numeric hour (0–23).
- */
 function parseHour(timeStr) {
-  if (!timeStr || timeStr === 'Now') {
-    return new Date().getHours();
-  }
+  if (!timeStr || timeStr === 'Now') return new Date().getHours();
   const [time, period] = timeStr.split(' ');
   let [hours] = time.split(':').map(Number);
   if (period === 'PM' && hours !== 12) hours += 12;
@@ -23,53 +16,61 @@ function parseHour(timeStr) {
   return hours;
 }
 
-/**
- * Convert "Today" / "Monday" to a day-of-week string the backend expects.
- */
 function parseDay(dayStr) {
-  if (!dayStr || dayStr === 'Today') {
+  if (!dayStr || dayStr === 'Today')
     return new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  }
   return dayStr;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'urbanflow_map_state';
+
+function loadMapState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch { return null; }
+}
+
+function saveMapState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+function clearMapState() {
+  localStorage.removeItem(STORAGE_KEY);
+}
 
 export function useMap() {
   const { user } = useAuthContext();
+  const saved = loadMapState();
 
-  // Route planner inputs
-  const [origin, setOrigin]           = useState('');
-  const [destination, setDestination] = useState('');
-  const [selectedTime, setSelectedTime] = useState('Now');
-  const [selectedDay, setSelectedDay]   = useState('Today');
+  const [origin, setOrigin]             = useState(saved?.origin || '');
+  const [destination, setDestination]   = useState(saved?.destination || '');
+  const [selectedTime, setSelectedTime] = useState(saved?.selectedTime || 'Now');
+  const [selectedDay, setSelectedDay]   = useState(saved?.selectedDay || 'Today');
+  const [predictionResult, setPredictionResult] = useState(saved?.predictionResult || null);
 
-  // Prediction + incidents
-  const [predictionResult, setPredictionResult] = useState(null);
-  const [incidents, setIncidents]               = useState([]);
-  const [predictLoading, setPredictLoading]     = useState(false);
-  const [predictError, setPredictError]         = useState(null);
-  const [savingRoute, setSavingRoute]           = useState(false);
-
-  // Google Maps directions result
+  const [incidents, setIncidents]           = useState([]);
+  const [predictLoading, setPredictLoading] = useState(false);
+  const [predictError, setPredictError]     = useState(null);
+  const [savingRoute, setSavingRoute]       = useState(false);
   const [directionsResult, setDirectionsResult] = useState(null);
 
-  // Rerouting state
   const [activeRoutePoints, setActiveRoutePoints]     = useState(null);
   const [currentUserLocation, setCurrentUserLocation] = useState(null);
-  const [originalDestination, setOriginalDestination] = useState(null);
+  const [originalDestination, setOriginalDestination] = useState(saved?.destination || null);
   const [detectedIncident, setDetectedIncident]       = useState(null);
   const [showRerouteBanner, setShowRerouteBanner]     = useState(false);
 
-  // Refs for cleanup — Golden Rule #10
   const routeCheckIntervalRef = useRef(null);
   const geoWatchIdRef         = useRef(null);
 
-  // ── Send GPS location on mount for geofencing ────────────────────────────
+  // Persist to localStorage on every change
+  useEffect(() => {
+    saveMapState({ origin, destination, selectedTime, selectedDay, predictionResult });
+  }, [origin, destination, selectedTime, selectedDay, predictionResult]);
 
   useEffect(() => {
     if (!user?.id) return;
-
     if (navigator.geolocation) {
       geoWatchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
@@ -81,13 +82,10 @@ export function useMap() {
         { enableHighAccuracy: true }
       );
     }
-
     fetchIncidents();
-
     return () => {
-      if (geoWatchIdRef.current !== null) {
+      if (geoWatchIdRef.current !== null)
         navigator.geolocation.clearWatch(geoWatchIdRef.current);
-      }
     };
   }, [user?.id]);
 
@@ -95,12 +93,8 @@ export function useMap() {
     try {
       const data = await mapService.getIncidents(area);
       setIncidents(Array.isArray(data) ? data : (data?.incidents || []));
-    } catch {
-      // Non-critical
-    }
+    } catch {}
   }
-
-  // ── Route incident polling ────────────────────────────────────────────────
 
   const checkRouteForIncidents = useCallback(async (points) => {
     if (!points || points.length === 0) return;
@@ -110,9 +104,7 @@ export function useMap() {
         setDetectedIncident(data.incident);
         setShowRerouteBanner(true);
       }
-    } catch {
-      // Non-critical
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -121,20 +113,14 @@ export function useMap() {
       routeCheckIntervalRef.current = null;
     }
     if (!activeRoutePoints) return;
-
     checkRouteForIncidents(activeRoutePoints);
     routeCheckIntervalRef.current = setInterval(() => {
       checkRouteForIncidents(activeRoutePoints);
     }, ROUTE_CHECK_INTERVAL);
-
     return () => {
-      if (routeCheckIntervalRef.current) {
-        clearInterval(routeCheckIntervalRef.current);
-      }
+      if (routeCheckIntervalRef.current) clearInterval(routeCheckIntervalRef.current);
     };
   }, [activeRoutePoints, checkRouteForIncidents]);
-
-  // ── Prediction — uses destination as location_name ───────────────────────
 
   async function predictCongestion() {
     if (!origin || !destination) return;
@@ -143,18 +129,9 @@ export function useMap() {
     try {
       const hour      = parseHour(selectedTime);
       const dayOfWeek = parseDay(selectedDay);
-
-      // Use current GPS coords if available, otherwise use Yaoundé center
       const lat = currentUserLocation?.lat ?? 3.848;
       const lng = currentUserLocation?.lng ?? 11.5021;
-
-      const data = await mapService.predictLocation(
-        destination,  // location_name — predict congestion at the destination
-        hour,
-        dayOfWeek,
-        lat,
-        lng
-      );
+      const data = await mapService.predictLocation(destination, hour, dayOfWeek, lat, lng);
       setPredictionResult(data);
     } catch (err) {
       setPredictError(err.message || 'Prediction failed. Please try again.');
@@ -163,15 +140,10 @@ export function useMap() {
     }
   }
 
-  // ── Called by MapPage when Google Maps draws the route ────────────────────
-
   function onRouteDrawn(result, destinationInput) {
     setDirectionsResult(result);
     setOriginalDestination(destinationInput);
-    const points = result.routes[0].overview_path.map((point) => [
-      point.lat(),
-      point.lng(),
-    ]);
+    const points = result.routes[0].overview_path.map((p) => [p.lat(), p.lng()]);
     setActiveRoutePoints(points);
     setShowRerouteBanner(false);
     setDetectedIncident(null);
@@ -184,19 +156,17 @@ export function useMap() {
     setShowRerouteBanner(false);
     setDetectedIncident(null);
     setOriginalDestination(null);
+    setOrigin('');
+    setDestination('');
+    clearMapState();
   }
 
-  function dismissRerouteBanner() {
-    setShowRerouteBanner(false);
-  }
+  function dismissRerouteBanner() { setShowRerouteBanner(false); }
 
   function updateRouteAfterReroute(newResult) {
     setDirectionsResult(newResult);
     setShowRerouteBanner(false);
-    const newPoints = newResult.routes[0].overview_path.map((point) => [
-      point.lat(),
-      point.lng(),
-    ]);
+    const newPoints = newResult.routes[0].overview_path.map((p) => [p.lat(), p.lng()]);
     setActiveRoutePoints(newPoints);
   }
 
@@ -204,16 +174,8 @@ export function useMap() {
     if (!predictionResult || !user?.id) return;
     setSavingRoute(true);
     try {
-      await mapService.saveRoute(user.id, {
-        origin,
-        destination,
-        prediction: predictionResult,
-      });
-    } catch {
-      // Non-critical
-    } finally {
-      setSavingRoute(false);
-    }
+      await mapService.saveRoute(user.id, { origin, destination, prediction: predictionResult });
+    } catch {} finally { setSavingRoute(false); }
   }
 
   return {
