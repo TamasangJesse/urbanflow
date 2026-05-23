@@ -1,6 +1,6 @@
 // UrbanFlow — useMap.js
 // Layer 2 (Logic): Route inputs, prediction results, incidents, rerouting state.
-// Fix: persists route + prediction to localStorage so state survives navigation.
+// Fix: Cleaned up geolocation callbacks and integrated instant WebSocket event bindings.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
@@ -64,11 +64,15 @@ export function useMap() {
   const routeCheckIntervalRef = useRef(null);
   const geoWatchIdRef         = useRef(null);
 
+
+  const [toast, setToast] = useState(null);
+
   // Persist to localStorage on every change
   useEffect(() => {
     saveMapState({ origin, destination, selectedTime, selectedDay, predictionResult });
   }, [origin, destination, selectedTime, selectedDay, predictionResult]);
 
+  // Geolocation watch lifecycle
   useEffect(() => {
     if (!user?.id) return;
     if (navigator.geolocation) {
@@ -76,9 +80,9 @@ export function useMap() {
         (pos) => {
           const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           setCurrentUserLocation(coords);
-          mapService.updateLocation(user.id, coords.lat, coords.lng).catch(() => {});
+          mapService.updateLocation(user.id, coords.lat, coords.lng, activeRoutePoints).catch(() => {});
         },
-        () => {},
+        () => {}, 
         { enableHighAccuracy: true }
       );
     }
@@ -87,7 +91,7 @@ export function useMap() {
       if (geoWatchIdRef.current !== null)
         navigator.geolocation.clearWatch(geoWatchIdRef.current);
     };
-  }, [user?.id]);
+  }, [user?.id, activeRoutePoints]);
 
   async function fetchIncidents(area = 'current') {
     try {
@@ -107,6 +111,7 @@ export function useMap() {
     } catch {}
   }, []);
 
+  // Standard interval polling fallback loop
   useEffect(() => {
     if (routeCheckIntervalRef.current) {
       clearInterval(routeCheckIntervalRef.current);
@@ -121,6 +126,49 @@ export function useMap() {
       if (routeCheckIntervalRef.current) clearInterval(routeCheckIntervalRef.current);
     };
   }, [activeRoutePoints, checkRouteForIncidents]);
+
+  // Instant real-time listener triggered by Step 1 event broadcast
+  useEffect(() => {
+    const handleInstantIncidentCheck = () => {
+      if (activeRoutePoints) {
+        fetchIncidents();
+        checkRouteForIncidents(activeRoutePoints);
+      }
+    };
+
+    window.addEventListener('URBANFLOW_NEW_INCIDENT', handleInstantIncidentCheck);
+    return () => {
+      window.removeEventListener('URBANFLOW_NEW_INCIDENT', handleInstantIncidentCheck);
+    };
+  }, [activeRoutePoints, checkRouteForIncidents]);
+
+
+
+
+  useEffect(() => {
+   function handleIncidentResolved(e) {
+    const { incident_id, address } = e.detail || {};
+    if (!incident_id) return;
+
+    setIncidents((prev) =>
+      prev.filter((inc) => (inc._id ?? inc.id) !== incident_id)
+    );
+
+    if (detectedIncident?._id === incident_id || detectedIncident?.id === incident_id) {
+      setShowRerouteBanner(false);
+      setDetectedIncident(null);
+    }
+
+    const message = address
+      ? `Incident resolved: ${address}`
+      : 'An incident near you has been resolved.';
+
+    setToast(message);
+  }
+
+  window.addEventListener('URBANFLOW_INCIDENT_RESOLVED', handleIncidentResolved);
+  return () => window.removeEventListener('URBANFLOW_INCIDENT_RESOLVED', handleIncidentResolved);
+}, [detectedIncident]);
 
   async function predictCongestion() {
     if (!origin || !destination) return;
@@ -193,11 +241,14 @@ export function useMap() {
     onRouteDrawn,
     clearRoute,
     saveCurrentRoute,
+    setIncidents, 
     currentUserLocation,
     originalDestination,
     detectedIncident,
     showRerouteBanner,
     dismissRerouteBanner,
     updateRouteAfterReroute,
+    toast,
+    clearToast: () => setToast(null),
   };
 }
