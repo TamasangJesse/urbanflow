@@ -9,9 +9,9 @@ async def publish_incident_event(
     incident_type: str,
     latitude: float,
     longitude: float,
-    severity: str,
-    description: str = "",  
-    reported_by: str 
+    severity: str, 
+    reported_by: str ,
+    description: str = ""
 ):
     """
     Publisher-Subscriber Pattern.
