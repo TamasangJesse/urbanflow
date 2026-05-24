@@ -1,0 +1,35 @@
+{{- if .Values.mongodb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-headless
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: mongodb
+    app.kubernetes.io/name: urbanflow
+spec:
+  clusterIP: None
+  selector:
+    app: mongodb
+  ports:
+    - name: mongo
+      port: {{ .Values.mongodb.port }}
+      targetPort: {{ .Values.mongodb.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: mongodb
+    app.kubernetes.io/name: urbanflow
+spec:
+  type: ClusterIP
+  selector:
+    app: mongodb
+  ports:
+    - name: mongo
+      port: {{ .Values.mongodb.port }}
+      targetPort: {{ .Values.mongodb.port }}
+{{- end }}

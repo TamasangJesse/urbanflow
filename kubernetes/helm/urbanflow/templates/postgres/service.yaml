@@ -1,0 +1,35 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: urbanflow
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.port }}
+      targetPort: {{ .Values.postgres.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: urbanflow
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.port }}
+      targetPort: {{ .Values.postgres.port }}
+{{- end }}

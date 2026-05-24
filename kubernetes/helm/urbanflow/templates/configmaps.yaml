@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: urbanflow-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: urbanflow
+data:
+  # Service discovery URLs — services talk to each other by k8s service name
+  USER_SERVICE_URL: "http://user-service:{{ .Values.userService.port }}"
+  INCIDENT_SERVICE_URL: "http://incident-report-service:{{ .Values.incidentReportService.port }}"
+  TRAFFIC_SERVICE_URL: "http://traffic-intelligence-service:{{ .Values.trafficIntelligenceService.port }}"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:{{ .Values.notificationService.port }}"
+  RAG_SERVICE_URL: "http://rag-service:{{ .Values.ragService.port }}"
+
+  # Database hosts (credentials come from secrets)
+  MONGO_HOST: "mongodb"
+  MONGO_PORT: "{{ .Values.mongodb.port }}"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "{{ .Values.redis.port }}"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "{{ .Values.postgres.port }}"

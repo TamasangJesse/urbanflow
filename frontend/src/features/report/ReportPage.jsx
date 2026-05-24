@@ -78,6 +78,7 @@ function ReportForm() {
     error,
     myIncidents,
     loadingIncidents,
+    resolveIncident,           // ← add this
   } = useReport();
 
   return (
@@ -244,19 +245,33 @@ function ReportForm() {
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-[14px] text-[#111210]">{incident.type}</span>
                   <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                    incident.severity === 'High' ? 'bg-[#FCEBEB] text-[#A32D2D]' : 
+                    incident.severity === 'High'   ? 'bg-[#FCEBEB] text-[#A32D2D]' : 
                     incident.severity === 'Medium' ? 'bg-[#FAEEDA] text-[#7A4F10]' : 
-                    'bg-[#EAF3DE] text-[#3A6B10]'
+                                                     'bg-[#EAF3DE] text-[#3A6B10]'
                   }`}>
                     {incident.severity}
                   </span>
                 </div>
+                
                 <p className="text-[13px] text-[#3D3D38] mb-2">{incident.description}</p>
-                <div className="text-[11px] text-[#7A7A72] flex items-center gap-1">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  {incident.address || `${incident.latitude?.toFixed(4)}, ${incident.longitude?.toFixed(4)}`}
+                
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-[#7A7A72] flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {incident.address || `${incident.latitude?.toFixed(4)}, ${incident.longitude?.toFixed(4)}`}
+                  </div>
+
+                  {incident.is_active && (
+                    <button
+                      type="button"
+                      onClick={() => resolveIncident(incident._id || incident.id)}
+                      className="text-[11px] text-[#7A7A72] underline hover:text-[#3D3D38] transition-colors"
+                    >
+                      Mark as resolved
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

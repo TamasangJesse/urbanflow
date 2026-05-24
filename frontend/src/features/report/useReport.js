@@ -13,10 +13,10 @@ const INITIAL_FORM = {
 export function useReport() {
   const { user } = useAuthContext();
   console.log("Full user object:", user);
-  const [form, setForm]           = useState(INITIAL_FORM);
-  const [loading, setLoading]     = useState(false);
-  const [success, setSuccess]     = useState(false);
-  const [error, setError]         = useState(null);
+  const [form, setForm]               = useState(INITIAL_FORM);
+  const [loading, setLoading]         = useState(false);
+  const [success, setSuccess]         = useState(false);
+  const [error, setError]             = useState(null);
   const [myIncidents, setMyIncidents] = useState([]);
   const [loadingIncidents, setLoadingIncidents] = useState(false);
 
@@ -34,30 +34,30 @@ export function useReport() {
     }
   }, []);
 
-  // Load user's past incidents
+  // ── Shared helper: fetch and normalise the user's incidents list ──────────
+  async function refreshMyIncidents() {
+    try {
+      const res = await reportService.getUserIncidents(user.id);
+      const responseData = res?.data || res;
+      console.log("Extracted payload inside hook:", responseData);
+
+      if (responseData && Array.isArray(responseData.incidents)) {
+        setMyIncidents(responseData.incidents);
+      } else if (Array.isArray(responseData)) {
+        setMyIncidents(responseData);
+      } else {
+        setMyIncidents([]);
+      }
+    } catch (err) {
+      console.error("Fetch block caught error:", err);
+    }
+  }
+
+  // Load user's past incidents on mount
   useEffect(() => {
     if (!user?.id) return;
     setLoadingIncidents(true);
-    
-    reportService.getUserIncidents(user.id)
-      .then((res) => {
-        // Axios wraps the response body in res.data
-        const responseData = res?.data || res;
-        
-        console.log("Extracted payload inside hook:", responseData);
-
-        // Your backend returns an object containing an "incidents" array
-        if (responseData && Array.isArray(responseData.incidents)) {
-          setMyIncidents(responseData.incidents);
-        } else if (Array.isArray(responseData)) {
-          setMyIncidents(responseData);
-        } else {
-          setMyIncidents([]);
-        }
-      })
-      .catch((err) => {
-        console.error("Fetch block caught error:", err);
-      })
+    refreshMyIncidents()
       .finally(() => setLoadingIncidents(false));
   }, [user?.id]);
 
@@ -84,16 +84,7 @@ export function useReport() {
       });
       setSuccess(true);
       setForm(INITIAL_FORM);
-      
-      // Safe refresh reload matching the backend dictionary structure
-      const res = await reportService.getUserIncidents(user.id);
-      const responseData = res?.data || res;
-
-      if (responseData && Array.isArray(responseData.incidents)) {
-        setMyIncidents(responseData.incidents);
-      } else if (Array.isArray(responseData)) {
-        setMyIncidents(responseData);
-      }
+      await refreshMyIncidents(); // Clean, single-line reuse
     } catch (err) {
       setError(err.message || 'Failed to submit report. Please try again.');
     } finally {
@@ -101,9 +92,20 @@ export function useReport() {
     }
   }
 
+  // ── Resolve an incident and drop it from the local list ───────────────────
+  async function resolveIncident(id) {
+    try {
+      await reportService.resolveIncident(id);
+      await refreshMyIncidents(); // Automatically updates the list so it disappears
+    } catch (err) {
+      console.error('Failed to resolve incident:', err);
+    }
+  }
+
   return {
     form, setField, setLocation,
     submitReport, loading, success, error,
     myIncidents, loadingIncidents,
+    resolveIncident, // Properly exported now!
   };
 }

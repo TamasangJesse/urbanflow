@@ -1,0 +1,24 @@
+{{- if and .Values.notificationService.enabled .Values.notificationService.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: notification-service-hpa
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: notification-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification-service
+  minReplicas: {{ .Values.notificationService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.notificationService.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.notificationService.hpa.cpuUtilization }}
+{{- end }}

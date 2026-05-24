@@ -184,3 +184,41 @@ async def route_request(request: Request, client: httpx.AsyncClient) -> Response
         headers=response_headers,
         media_type=downstream_response.headers.get("content-type"),
     )
+
+
+
+
+async def forward_websocket(websocket_path: str, token: str, client_websocket):
+    """
+    Forward a WebSocket connection from the client to the notification service.
+    Bridges two WebSocket connections — client <-> gateway <-> notification service.
+    """
+    import websockets as ws
+
+    target_base = settings.NOTIFICATION_SERVICE_URL.replace("http://", "ws://")
+    target_url = f"{target_base}{websocket_path}"
+
+    try:
+        async with ws.connect(target_url) as downstream_ws:
+            async def client_to_downstream():
+                try:
+                    while True:
+                        data = await client_websocket.receive_text()
+                        await downstream_ws.send(data)
+                except Exception:
+                    pass
+
+            async def downstream_to_client():
+                try:
+                    async for message in downstream_ws:
+                        await client_websocket.send_text(message)
+                except Exception:
+                    pass
+
+            import asyncio
+            await asyncio.gather(
+                client_to_downstream(),
+                downstream_to_client(),
+            )
+    except Exception as e:
+        logger.error("WebSocket forwarding error: %s", e)

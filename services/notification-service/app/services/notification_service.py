@@ -2,21 +2,27 @@ import logging
 from datetime import datetime
 
 from app.core.config import settings
+from app.core.connection_manager import manager
 from app.core.haversine import haversine
 from app.core.models import IncidentEvent, Notification
 from app.repositories.notification_repository import NotificationRepository
 
 logger = logging.getLogger(__name__)
 
+# How close an incident must be to any point on the user's route to trigger
+# a notification. 300m matches the frontend's checkRoute threshold.
+_ROUTE_INCIDENT_THRESHOLD_METRES = 300.0
+
 
 class NotificationService:
     """
     Business logic layer for the Notification Service.
 
-    Responsibilities:
-        1. find_nearby_users()  — geofencing via Haversine formula
-        2. push_notification()  — write alert to Redis via repository
-        3. notify_nearby_users() — orchestrates 1 + 2 for a given event
+    Notification is triggered in TWO ways:
+        1. Route-based  — incident is within 300m of any point on the
+                          user's active planned route (most important)
+        2. Proximity    — user is within 5km of the incident and has
+                          no active route (fallback)
     """
 
     def __init__(self, repository: NotificationRepository) -> None:
@@ -26,18 +32,19 @@ class NotificationService:
         self,
         incident_lat: float,
         incident_lng: float,
-        exclude_user_id: str | None = None, 
         radius_metres: float = settings.geofence_radius_metres,
+        exclude_user_id: str | None = None,
     ) -> list[str]:
         """
-        Return the IDs of all users whose cached location is within
-        `radius_metres` of the given incident coordinates.
+        Return the IDs of all users who should be notified about this incident.
 
-        Steps (as specified in the architecture document):
-            1. Read all active user_session:* keys from Redis.
-            2. For each user, retrieve their (lat, lng).
-            3. Apply Haversine formula.
-            4. Return IDs of users within range.
+        For each active user:
+            1. If they have an active route — check if the incident is within
+               300m of any point on that route. If yes, notify them.
+            2. If they have no active route — fall back to the original
+               Haversine 5km proximity check.
+
+        The reporter of the incident is always excluded.
         """
         nearby: list[str] = []
 
@@ -45,28 +52,37 @@ class NotificationService:
         logger.info("Checking %d active users for proximity", len(user_ids))
 
         for user_id in user_ids:
+            if user_id == exclude_user_id:
+                continue
+
             location = await self._repo.get_user_location(user_id)
             if location is None:
-                if user_id == exclude_user_id:
-                     continue  
-                continue  # Location expired or malformed — skip
+                continue
 
-            user_lat, user_lng = location
-            distance = haversine(incident_lat, incident_lng, user_lat, user_lng)
+            # Try route-based check first
+            route_points = await self._repo.get_user_route_points(user_id)
 
-            if distance <= radius_metres:
-                nearby.append(user_id)
-                logger.debug(
-                    "User %s is %.0fm away — within %.0fm radius",
-                    user_id,
-                    distance,
-                    radius_metres,
-                )
+            if route_points:
+                if self._incident_on_route(incident_lat, incident_lng, route_points):
+                    nearby.append(user_id)
+                    logger.info(
+                        "User %s notified — incident is on their active route", user_id
+                    )
+            else:
+                # No active route — fall back to proximity check
+                user_lat, user_lng = location
+                distance = haversine(incident_lat, incident_lng, user_lat, user_lng)
+                if distance <= radius_metres:
+                    nearby.append(user_id)
+                    logger.info(
+                        "User %s notified — %.0fm from incident (proximity fallback)",
+                        user_id,
+                        distance,
+                    )
 
         logger.info(
-            "Found %d users within %.0fm of incident (%.4f, %.4f)",
+            "Found %d users to notify for incident at (%.4f, %.4f)",
             len(nearby),
-            radius_metres,
             incident_lat,
             incident_lng,
         )
@@ -74,8 +90,9 @@ class NotificationService:
 
     async def push_notification(self, user_id: str, event: IncidentEvent) -> None:
         """
-        Build a Notification object from an IncidentEvent and write it
-        to the user's Redis key via the repository.
+        Build a Notification object from an IncidentEvent:
+            1. Write it to Redis (persists for polling / history)
+            2. Push it instantly via WebSocket if the user is connected
         """
         notification = Notification(
             incident_id=event.incident_id,
@@ -87,7 +104,17 @@ class NotificationService:
             created_at=datetime.utcnow(),
             is_read=False,
         )
+
+        # Always write to Redis — user may be offline and poll later
         await self._repo.push_notification(user_id, notification)
+
+        # If user has an open WebSocket connection, push instantly
+        if manager.is_connected(user_id):
+            await manager.send_to_user(
+                user_id,
+                notification.model_dump(mode="json"),
+            )
+            logger.info("WebSocket push sent to user %s", user_id)
 
     async def notify_nearby_users(self, event: IncidentEvent) -> int:
         """
@@ -96,12 +123,11 @@ class NotificationService:
         Returns:
             Number of users notified.
         """
-        
         nearby_users = await self.find_nearby_users(
-             event.latitude,
-             event.longitude,
-             exclude_user_id=event.reported_by,
-              )
+            event.latitude,
+            event.longitude,
+            exclude_user_id=event.reported_by,
+        )
 
         for user_id in nearby_users:
             await self.push_notification(user_id, event)
@@ -111,6 +137,25 @@ class NotificationService:
     # ------------------------------------------------------------------ #
     # Private helpers
     # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _incident_on_route(
+        incident_lat: float,
+        incident_lng: float,
+        route_points: list[tuple[float, float]],
+    ) -> bool:
+        """
+        Return True if the incident is within 300m of any point on the route.
+
+        Iterates over every coordinate in the route and checks the Haversine
+        distance to the incident. If any point is within the threshold, the
+        incident is considered to be on the route.
+        """
+        for point_lat, point_lng in route_points:
+            distance = haversine(incident_lat, incident_lng, point_lat, point_lng)
+            if distance <= _ROUTE_INCIDENT_THRESHOLD_METRES:
+                return True
+        return False
 
     @staticmethod
     def _build_message(event: IncidentEvent) -> str:

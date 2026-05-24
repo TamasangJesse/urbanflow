@@ -26,6 +26,7 @@ function NotificationDropdown({ notifications, unreadCount, onMarkAllRead, onClo
     congestion: '🚦',
     alert:      '🔔',
     system:     '💬',
+    resolved:   '✅',
   };
 
   return (
@@ -69,7 +70,11 @@ function NotificationDropdown({ notifications, unreadCount, onMarkAllRead, onClo
             return (
               <div
                 key={n.id || i}
-                className={`flex items-start gap-3 px-5 py-4 border-b border-[#F5F5F3] last:border-b-0 transition-colors hover:bg-[#F7F6F2] ${!isRead ? 'bg-[#F0F6FF]' : 'bg-white'}`}
+                className={`flex items-start gap-3 px-5 py-4 border-b border-[#F5F5F3] last:border-b-0 transition-colors hover:bg-[#F7F6F2] ${
+                  !isRead && type === 'resolved' ? 'bg-[#EAF3DE]' :
+                  !isRead ? 'bg-[#F0F6FF]' :
+                  'bg-white'
+                   }`}
               >
                 <div className="w-9 h-9 rounded-full bg-[#F7F6F2] flex items-center justify-center text-lg flex-shrink-0">
                   {icon}

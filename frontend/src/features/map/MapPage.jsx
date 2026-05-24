@@ -14,6 +14,7 @@ import { useMap } from './useMap';
 import { MAPS_LOADER_CONFIG } from '../../lib/constants';
 import { Toast } from '../../components/Toast';
 import ChatPanel from '../rag/ChatPanel';
+import { useChatPanel } from '../../context/ChatPanelContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -282,7 +283,7 @@ function MapPageInner() {
   const [rerouteLoading, setRerouteLoading] = useState(false);
   const [rerouted, setRerouted] = useState(false);
   const directionsServiceRef = useDirectionsService();
-  const [chatOpen, setChatOpen] = useState(false);
+  const { isOpen: chatOpen, close: setChatOpen } = useChatPanel();
 
   
   // ── everything below stays exactly the same as before ────────────────────
@@ -426,7 +427,7 @@ function MapPageInner() {
       </div>
 
       {/* ─── CHAT PANEL HUD ELEMENT ─── */}
-      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatPanel open={chatOpen} onClose={setChatOpen} />
       {toast && <Toast message={toast} onDismiss={clearToast} />}
     </div>
   );

@@ -119,15 +119,19 @@ async def update_location(
     repo = UserRepository(db)
     await repo.update_location(user_id=user_id, latitude=body.latitude, longitude=body.longitude)
 
+    # Build Redis payload
+    redis_payload = {"latitude": body.latitude, "longitude": body.longitude}
+    if body.route_points:
+        redis_payload["route_points"] = body.route_points
+
     # Save to Redis for Notification Service geofencing
     await redis_client.setex(
         f"user_session:{user_id}",
-        86400,  # 24 hour TTL
-        json.dumps({"latitude": body.latitude, "longitude": body.longitude})
+        86400,
+        json.dumps(redis_payload)
     )
 
     return {"message": "Location updated"}
-
 
 # ─── Saved Routes ────────────────────────────────────────────────
 

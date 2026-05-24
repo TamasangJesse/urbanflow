@@ -5,6 +5,7 @@ import logging
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.connection_manager import manager
 from app.core.models import IncidentEvent
 from app.core.redis_client import get_redis
 from app.repositories.notification_repository import NotificationRepository
@@ -15,6 +16,11 @@ logger = logging.getLogger(__name__)
 # How long (seconds) to block waiting for new stream messages before looping.
 # Keeps the worker responsive to cancellation without busy-waiting.
 _BLOCK_MS = 5_000
+
+# How long a message can sit pending before we auto-claim it (60 seconds).
+# If a consumer dies mid-processing, another consumer will pick it up after
+# this threshold instead of leaving it stuck forever.
+_PENDING_TIMEOUT_MS = 60_000
 
 
 async def _ensure_consumer_group(redis: aioredis.Redis) -> None:
@@ -40,6 +46,43 @@ async def _ensure_consumer_group(redis: aioredis.Redis) -> None:
             logger.debug("Consumer group already exists — skipping creation")
         else:
             raise
+
+
+async def _claim_abandoned_messages(
+    redis: aioredis.Redis,
+    service: NotificationService,
+) -> None:
+    """
+    Claim and reprocess any messages that have been pending for longer than
+    _PENDING_TIMEOUT_MS without being acknowledged.
+
+    This handles the case where a consumer pod crashes or is restarted mid-
+    processing, leaving messages stuck in the pending state forever. Without
+    this, those messages block the queue and new incidents are delayed.
+    """
+    try:
+        result = await redis.xautoclaim(
+            settings.incident_stream_name,
+            settings.stream_consumer_group,
+            settings.stream_consumer_name,
+            min_idle_time=_PENDING_TIMEOUT_MS,
+            start_id="0-0",
+            count=10,
+        )
+
+        # xautoclaim returns (next_start_id, messages, deleted_ids)
+        messages = result[1] if result and len(result) > 1 else []
+
+        if messages:
+            logger.warning(
+                "Claimed %d abandoned message(s) — reprocessing now", len(messages)
+            )
+            for message_id, fields in messages:
+                await _process_message(redis, service, message_id, fields)
+
+    except Exception as e:
+        # XAUTOCLAIM requires Redis 6.2+. If not available, log and continue.
+        logger.warning("XAUTOCLAIM not available or failed: %s — skipping", e)
 
 
 async def consume_incident_stream() -> None:
@@ -68,6 +111,9 @@ async def consume_incident_stream() -> None:
 
     while True:
         try:
+            # Claim any abandoned pending messages first before reading new ones.
+            await _claim_abandoned_messages(redis, service)
+
             # XREADGROUP blocks for up to _BLOCK_MS ms waiting for new messages.
             # ">" means "give me only messages not yet delivered to any consumer".
             results = await redis.xreadgroup(
@@ -104,6 +150,28 @@ async def _process_message(
     try:
         logger.debug("Processing message %s: %s", message_id, fields)
 
+        event_type = fields.get("event", "incident_reported")
+
+        # ── Incident resolved — broadcast to all connected clients ────────
+        if event_type == "incident_resolved":
+            await manager.broadcast({
+             "type":          "incident_resolved",
+             "incident_id":   fields.get("incident_id"),
+             "incident_type": fields.get("incident_type", "Incident"),
+             "address":       fields.get("address", ""),
+           })
+            logger.info(
+                "Incident %s resolved — broadcast sent to all connected clients",
+                fields.get("incident_id"),
+            )
+            await redis.xack(
+                settings.incident_stream_name,
+                settings.stream_consumer_group,
+                message_id,
+            )
+            return
+
+        # ── Normal incident reported — notify nearby users ─────────────────
         event = IncidentEvent(
             incident_id=fields["incident_id"],
             type=fields["type"],
@@ -112,6 +180,7 @@ async def _process_message(
             severity=fields["severity"].lower(),
             created_at=fields["created_at"],
             reported_by=fields.get("reported_by"),
+            description=fields.get("description", ""),
         )
 
         notified_count = await service.notify_nearby_users(event)

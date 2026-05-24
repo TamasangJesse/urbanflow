@@ -20,7 +20,7 @@ class NotificationRepository:
 
     Keys managed:
         notification:{user_id}   — List of notification JSON objects (TTL 24h)
-        user_session:{user_id}   — User location written by the User Service
+        user_session:{user_id}   — User location + route written by the User Service
     """
 
     def __init__(self, redis: aioredis.Redis) -> None:
@@ -38,7 +38,6 @@ class NotificationRepository:
         key = f"notification:{user_id}"
         payload = notification.model_dump_json()
 
-        # RPUSH keeps insertion order; newest notifications appear last.
         await self._redis.rpush(key, payload)
         await self._redis.expire(key, settings.notification_ttl_seconds)
 
@@ -78,10 +77,6 @@ class NotificationRepository:
         Read the user's last known GPS coordinates from the shared
         user_session:{user_id} Redis key.
 
-        The User Service writes this key on login and on
-        PUT /users/{id}/location.  No HTTP call is made — the Notification
-        Service reads the cache directly (loose coupling via shared Redis).
-
         Returns:
             (latitude, longitude) tuple, or None if the key is missing.
         """
@@ -96,6 +91,33 @@ class NotificationRepository:
             return float(data["latitude"]), float(data["longitude"])
         except (KeyError, ValueError, json.JSONDecodeError):
             logger.warning("Malformed user_session for user %s", user_id)
+            return None
+
+    async def get_user_route_points(self, user_id: str) -> list[tuple[float, float]] | None:
+        """
+        Read the user's active route points from the shared
+        user_session:{user_id} Redis key.
+
+        Route points are written by the User Service when the user
+        plans a route on the frontend. Each point is a [lat, lng] pair.
+
+        Returns:
+            List of (latitude, longitude) tuples, or None if no route is stored.
+        """
+        key = f"user_session:{user_id}"
+        raw = await self._redis.get(key)
+
+        if raw is None:
+            return None
+
+        try:
+            data = json.loads(raw)
+            route_points = data.get("route_points")
+            if not route_points:
+                return None
+            return [(float(p[0]), float(p[1])) for p in route_points]
+        except (KeyError, ValueError, json.JSONDecodeError, IndexError):
+            logger.warning("Malformed route_points for user %s", user_id)
             return None
 
     async def get_all_active_user_ids(self) -> list[str]:

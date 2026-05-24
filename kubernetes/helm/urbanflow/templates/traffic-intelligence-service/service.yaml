@@ -1,0 +1,18 @@
+{{- if .Values.trafficIntelligenceService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-intelligence-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: traffic-intelligence-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  type: ClusterIP
+  selector:
+    app: traffic-intelligence-service
+  ports:
+    - name: http
+      port: {{ .Values.trafficIntelligenceService.port }}
+      targetPort: {{ .Values.trafficIntelligenceService.port }}
+{{- end }}

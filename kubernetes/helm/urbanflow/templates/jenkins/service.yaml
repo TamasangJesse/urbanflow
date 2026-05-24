@@ -1,0 +1,25 @@
+{{- if .Values.jenkins.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: jenkins
+    app.kubernetes.io/name: urbanflow
+spec:
+  # NodePort: access Jenkins at http://<VPS-IP>:32080
+  # No domain or Ingress needed
+  type: NodePort
+  selector:
+    app: jenkins
+  ports:
+    - name: http
+      port: {{ .Values.jenkins.port }}
+      targetPort: {{ .Values.jenkins.port }}
+      nodePort: 32080
+    - name: agent
+      port: {{ .Values.jenkins.agentPort }}
+      targetPort: {{ .Values.jenkins.agentPort }}
+      nodePort: 32500
+{{- end }}

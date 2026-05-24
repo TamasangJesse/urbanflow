@@ -24,6 +24,8 @@ from app.config import settings
 from app.core.auth import validate_token
 from app.core.proxy import route_request
 from app.core.middleware import register_middleware
+from fastapi import WebSocket
+from app.core.proxy import route_request, forward_websocket
 
 
 # =============================================================================
@@ -151,6 +153,7 @@ async def health_check(request: Request):
     tags=["Gateway"],
     include_in_schema=False,  # Catch-all — no point documenting a wildcard
 )
+
 @limiter.limit("100/minute")
 async def gateway(request: Request, path: str):
     """
@@ -190,3 +193,31 @@ async def gateway(request: Request, path: str):
     # route_request() — resolve service and forward.
     # ----------------------------------------------------------------
     return await route_request(request, request.app.state.http_client)
+
+
+
+@app.websocket("/ws/{user_id}")
+async def websocket_gateway(websocket: WebSocket, user_id: str):
+    """
+    WebSocket gateway — forwards /ws/{user_id} to the notification service.
+    Validates JWT token passed as a query parameter since WebSocket
+    connections cannot send Authorization headers.
+    """
+    # JWT comes as query param: ws://host/ws/{user_id}?token=xxx
+    token = websocket.query_params.get("token", "")
+
+    if not token:
+        await websocket.close(code=1008)  # 1008 = Policy Violation
+        return
+
+    try:
+        await validate_token(token, websocket.app.state.redis)
+    except Exception:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    await forward_websocket(f"/ws/{user_id}", token, websocket)
+
+
+    

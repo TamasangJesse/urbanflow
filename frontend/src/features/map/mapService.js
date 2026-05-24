@@ -32,6 +32,14 @@ const mapService = {
   updateLocation: (userId, lat, lng) =>
     apiClient.put(`/users/${userId}/location`, { latitude: lat, longitude: lng }),
 
+  /** PUT /users/{id}/location — send GPS coords + active route for geofencing */
+updateLocation: (userId, lat, lng, routePoints = null) =>
+  apiClient.put(`/users/${userId}/location`, { 
+    latitude: lat, 
+    longitude: lng,
+    route_points: routePoints 
+  }),
+
   /** POST /incidents/check-route — check if any incident is within 300m of route */
   checkRoute: (routePoints) =>
     apiClient.post('/incidents/check-route', { route_points: routePoints }),

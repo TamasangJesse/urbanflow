@@ -4,6 +4,7 @@ from uuid import UUID
 from typing import Optional, List
 
 
+
 # ─── Auth Schemas ───────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
@@ -46,10 +47,12 @@ class UpdateProfileRequest(BaseModel):
 
 # ─── Location Schemas ────────────────────────────────────────────
 
+
+
 class UpdateLocationRequest(BaseModel):
     latitude: float
     longitude: float
-
+    route_points: Optional[List[List[float]]] = None
 
 # ─── Saved Route Schemas ─────────────────────────────────────────
 

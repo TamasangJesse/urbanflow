@@ -17,6 +17,7 @@ class IncidentEvent(BaseModel):
     severity: Literal["low", "medium", "high", "critical"]
     created_at: datetime
     reported_by: str | None = None
+    description: str | None = None  # ← add this
 
 
 class Notification(BaseModel):

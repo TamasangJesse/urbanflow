@@ -28,18 +28,36 @@ async def cmd_report_incident(data: dict) -> dict:
         latitude      = data["latitude"],
         longitude     = data["longitude"],
         severity      = data["severity"],
-        reported_by   = data["reported_by"]
+        reported_by   = data["reported_by"],
+        description   = data.get("description", "")  # ← add this
     )
 
     return {"incident_id": incident_id}
 
 
-async def cmd_resolve_incident(incident_id: str) -> bool:
+
     """
     COMMAND: Resolve an incident.
     Writes is_active=False to MongoDB. No event published.
     """
-    return await incident_repository.resolve_incident(incident_id)
+
+
+
+
+async def cmd_resolve_incident(incident_id: str) -> bool:
+    # Fetch incident details before resolving so we can include them in the event
+    incident = await incident_repository.find_by_id(incident_id)
+    
+    success = await incident_repository.resolve_incident(incident_id)
+    if success and incident:
+        from database import redis_client
+        await redis_client.xadd("incident_stream", {
+            "event":         "incident_resolved",
+            "incident_id":   incident_id,
+            "incident_type": incident.get("type", "Incident"),
+            "address":       incident.get("description", ""),
+        })
+    return success
 
 
 async def cmd_delete_incident(incident_id: str) -> bool:

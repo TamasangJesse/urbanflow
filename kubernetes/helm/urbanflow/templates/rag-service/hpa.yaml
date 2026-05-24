@@ -1,0 +1,24 @@
+{{- if and .Values.ragService.enabled .Values.ragService.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rag-service-hpa
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: rag-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rag-service
+  minReplicas: {{ .Values.ragService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.ragService.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.ragService.hpa.cpuUtilization }}
+{{- end }}

@@ -41,3 +41,5 @@ kubernetes/secrets/
 infrastructure/terraform/*.tfstate
 infrastructure/terraform/*.tfstate.backup
 infrastructure/terraform/.terraform/
+
+.values.yaml

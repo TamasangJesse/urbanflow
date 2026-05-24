@@ -1,0 +1,53 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: urbanflow-ingress
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: urbanflow
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.global.domain }}
+      secretName: urbanflow-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.global.domain }}
+      http:
+        paths:
+          # API Gateway — all /api/* traffic goes here first
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: {{ .Values.apiGateway.port }}
+
+
+           # WebSocket — notification service
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8003
+
+
+                  
+          # Frontend — everything else
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: {{ .Values.frontend.port }}
+{{- end }}

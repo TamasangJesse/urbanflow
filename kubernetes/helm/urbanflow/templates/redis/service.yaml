@@ -1,0 +1,18 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: redis
+    app.kubernetes.io/name: urbanflow
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: {{ .Values.redis.port }}
+      targetPort: {{ .Values.redis.port }}
+{{- end }}

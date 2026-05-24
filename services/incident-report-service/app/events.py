@@ -10,6 +10,7 @@ async def publish_incident_event(
     latitude: float,
     longitude: float,
     severity: str,
+    description: str = "",  
     reported_by: str 
 ):
     """
@@ -24,6 +25,7 @@ async def publish_incident_event(
         "longitude":   str(longitude),
         "severity":    severity.lower(),
         "reported_by":  reported_by,
+        "description": description,    
         "created_at":  datetime.now(timezone.utc).isoformat()
     }
     await redis_client.xadd(STREAM_NAME, payload)

@@ -1,0 +1,53 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: frontend
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          # VITE_ vars are baked in at build time but kept here for reference
+          env:
+            - name: VITE_GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: VITE_GOOGLE_MAPS_API_KEY
+          resources:
+            requests:
+              cpu: {{ .Values.frontend.resources.requests.cpu }}
+              memory: {{ .Values.frontend.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.frontend.resources.limits.cpu }}
+              memory: {{ .Values.frontend.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+{{- end }}
