@@ -54,7 +54,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/user-service/tests/coverage.xml || true
@@ -78,7 +79,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/incident-report-service/tests/coverage.xml || true
@@ -102,7 +104,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/notification-service/tests/coverage.xml || true
@@ -126,7 +129,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/coverage.xml || true
@@ -150,7 +154,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/api-gateway/tests/coverage.xml || true
@@ -174,7 +179,8 @@ pipeline {
                             docker exec $CONTAINER python -m pytest -v \
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                                --cov-report=xml:/tmp/coverage.xml \
+                                --cov-data-file=/tmp/.coverage || true
                                 
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/rag-service/tests/coverage.xml || true
