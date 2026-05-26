@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo 'Building all Docker images...'
                 sh '''
-                    set -a && . .env && set +a
+                    set -a && source .env && set +a
                     docker compose -p urbanflow build
                 '''
             }
