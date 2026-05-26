@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo 'Building all Docker images...'
                 sh '''
-                    set -a && source .env && set +a
+                    set -a && . .env && set +a
                     docker compose -p urbanflow build
                 '''
             }
@@ -55,7 +55,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/user-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -79,7 +79,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/incident-report-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -103,7 +103,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/notification-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -127,7 +127,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/traffic-intelligence-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -151,7 +151,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/api-gateway/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -175,7 +175,7 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                --cov-config=/dev/null || true
+                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/rag-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
