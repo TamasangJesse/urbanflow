@@ -1,5 +1,6 @@
 from repository import incident_repository
 from events import publish_incident_event
+from database import redis_client
 
 """
 CQRS — COMMAND SIDE
