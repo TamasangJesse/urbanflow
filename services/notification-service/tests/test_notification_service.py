@@ -33,11 +33,13 @@ def _make_event(**kwargs) -> IncidentEvent:
     return IncidentEvent(**defaults)
 
 
+
+
 def _make_mock_repo() -> MagicMock:
-    """Return a MagicMock whose async methods return sensible defaults."""
     repo = MagicMock(spec=NotificationRepository)
     repo.get_all_active_user_ids = AsyncMock(return_value=[])
     repo.get_user_location = AsyncMock(return_value=None)
+    repo.get_user_route_points = AsyncMock(return_value=None)  # add this line
     repo.push_notification = AsyncMock(return_value=None)
     repo.get_notifications = AsyncMock(return_value=[])
     repo.clear_notifications = AsyncMock(return_value=None)
