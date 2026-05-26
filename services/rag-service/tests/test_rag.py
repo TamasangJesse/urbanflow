@@ -8,7 +8,7 @@ from jose import jwt
 
 os.environ.setdefault("MONGODB_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DATABASE_NAME", "urbanflow_rag_test")
-os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ.setdefault("ZAI_API_KEY", "test-key")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("ALGORITHM", "HS256")
 os.environ.setdefault("INCIDENT_SERVICE_URL", "http://localhost:8004")
@@ -52,24 +52,27 @@ def test_chat_requires_auth():
 def test_chat_returns_answer():
     token = make_token("user-123")
 
+    mock_message = MagicMock()
+    mock_message.content = "Traffic in Bastos is currently light with no reported incidents."
+
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+
     mock_response = MagicMock()
-    mock_response.text = "Traffic in Bastos is currently light with no reported incidents."
+    mock_response.choices = [mock_choice]
 
-    mock_models = MagicMock()
-    mock_models.generate_content.return_value = mock_response
-
-    mock_client = MagicMock()
-    mock_client.models = mock_models
+    mock_openai_instance = MagicMock()
+    mock_openai_instance.chat.completions.create.return_value = mock_response
 
     with (
-        patch("app.rag_engine.genai.Client", return_value=mock_client),
+        patch("app.rag_engine.OpenAI", return_value=mock_openai_instance),
         patch(
             "app.rag_engine.get_nearby_incidents",
             new=AsyncMock(return_value=[]),
         ),
         patch(
             "app.rag_engine.get_traffic_prediction",
-            new=AsyncMock(return_value="low"),
+            new=AsyncMock(return_value="Low"),
         ),
         patch(
             "app.repository.ChatRepository.save_chat",
