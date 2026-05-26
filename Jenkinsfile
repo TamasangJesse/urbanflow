@@ -192,7 +192,7 @@ pipeline {
 
 
         stage('Deploy') {
-  b         when {
+            when {
                 branch 'main'
            }
             steps {
