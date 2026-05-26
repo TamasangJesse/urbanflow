@@ -54,7 +54,7 @@ async def cmd_resolve_incident(incident_id: str) -> bool:
         await redis_client.xadd("incident_stream", {
             "event":         "incident_resolved",
             "incident_id":   incident_id,
-            "incident_type": incident.get("type", "Incident"),
+            "incident_type": incident.get("type", "Incident"),  
             "address":       incident.get("description", ""),
         })
     return success

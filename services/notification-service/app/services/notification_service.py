@@ -164,3 +164,15 @@ class NotificationService:
             f"[{severity_label}] {event.type.replace('_', ' ').title()} reported "
             f"near your location. Stay alert and consider an alternate route."
         )
+
+    @staticmethod
+    def _build_message(event: IncidentEvent) -> str:
+        severity_label = event.severity.capitalize()
+        location = getattr(event, 'description', None)
+        logger.info("Building message — severity: %s, description: %s", severity_label, location)
+        if location:
+           return f"[{severity_label}] {event.type.replace('_', ' ').title()} — {location}"
+        return (
+            f"[{severity_label}] {event.type.replace('_', ' ').title()} reported "
+            f"near your location. Stay alert and consider an alternate route."
+      )

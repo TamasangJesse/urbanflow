@@ -40,11 +40,11 @@ spec:
                 secretKeyRef:
                   name: urbanflow-secrets
                   key: SECRET_KEY
-            - name: GEMINI_API_KEY
+            - name: ZAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: urbanflow-secrets
-                  key: GEMINI_API_KEY
+                  key: ZAI_API_KEY
             # MONGODB_URL matches compose exactly
             - name: MONGODB_URL
               value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:{{ .Values.mongodb.port }}/urbanflow_rag?authSource=admin"

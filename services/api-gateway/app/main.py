@@ -220,4 +220,3 @@ async def websocket_gateway(websocket: WebSocket, user_id: str):
     await forward_websocket(f"/ws/{user_id}", token, websocket)
 
 
-    

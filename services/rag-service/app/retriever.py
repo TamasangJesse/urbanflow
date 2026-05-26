@@ -9,23 +9,16 @@ import httpx
 logger = logging.getLogger(__name__)
 
 INCIDENT_SERVICE_URL = os.getenv("INCIDENT_SERVICE_URL", "http://incident-report-service:8004")
-TRAFFIC_SERVICE_URL = os.getenv("TRAFFIC_SERVICE_URL", "http://traffic-intelligence-service:8002")
-
-YAOUNDE_LOCATIONS = [
-    "Bastos", "Mokolo", "Mvan", "Carrefour Warda", "Centre Ville",
-    "Nlongkak", "Mvog-Ada", "Messasi", "Biyem-Assi", "Essos", "Omnisports",
-    "Mimboman", "Ngousso", "Santa Barbara", "Nsam", "Mendong", "Odza",
-    "Ahala", "Nkolfoulou", "Ekounou",
-]
+TRAFFIC_SERVICE_URL  = os.getenv("TRAFFIC_SERVICE_URL",  "http://traffic-intelligence-service:8002")
 
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
 def extract_location(question: str) -> Optional[str]:
-    lower = question.lower()
-    for loc in YAOUNDE_LOCATIONS:
-        if loc.lower() in lower:
-            return loc
+    """Extract any capitalized place name from the question."""
+    match = re.search(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b', question)
+    if match:
+        return match.group(1)
     return None
 
 
@@ -37,7 +30,6 @@ def extract_hour(question: str) -> int:
     if "noon" in lower:
         return 12
 
-    # Match "5pm", "5 pm", "17h", "at 8am", "8 am"
     pm_match = re.search(r"\b(\d{1,2})\s*pm\b", lower)
     if pm_match:
         h = int(pm_match.group(1))
@@ -52,7 +44,6 @@ def extract_hour(question: str) -> int:
     if h_match:
         return int(h_match.group(1)) % 24
 
-    # Default: current WAT hour (UTC+1)
     now_utc = datetime.now(timezone.utc)
     return (now_utc.hour + 1) % 24
 
@@ -71,6 +62,28 @@ def extract_day(question: str) -> str:
     return DAY_NAMES[now.weekday()]
 
 
+async def get_coordinates(location: str) -> tuple[float, float]:
+    """Get coordinates for any location using free OpenStreetMap geocoding."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "q": f"{location}, Yaoundé, Cameroon",
+                    "format": "json",
+                    "limit": 1,
+                },
+                headers={"User-Agent": "UrbanFlow/1.0"}
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    return float(data[0]["lat"]), float(data[0]["lon"])
+    except Exception as exc:
+        logger.warning("Geocoding failed for %s: %s", location, exc)
+    return (3.8667, 11.5167)  # fallback to Yaoundé center
+
+
 async def get_nearby_incidents(latitude: float, longitude: float, token: str) -> list:
     url = f"{INCIDENT_SERVICE_URL}/incidents/near"
     params = {"lat": latitude, "lng": longitude, "radius": 3000}
@@ -83,9 +96,7 @@ async def get_nearby_incidents(latitude: float, longitude: float, token: str) ->
                 if isinstance(data, list):
                     return data
                 return data.get("incidents", [])
-            logger.warning(
-                "Incident service returned %s for nearby incidents", response.status_code
-            )
+            logger.warning("Incident service returned %s for nearby incidents", response.status_code)
             return []
     except Exception as exc:
         logger.warning("Failed to fetch nearby incidents: %s", exc)
@@ -93,8 +104,15 @@ async def get_nearby_incidents(latitude: float, longitude: float, token: str) ->
 
 
 async def get_traffic_prediction(location: str, hour: int, day: str, token: str) -> Optional[str]:
+    latitude, longitude = await get_coordinates(location)
     url = f"{TRAFFIC_SERVICE_URL}/predict"
-    params = {"location": location, "hour": hour, "day": day}
+    params = {
+        "location_name": location,
+        "latitude":      latitude,
+        "longitude":     longitude,
+        "day_of_week":   day,
+        "hour":          hour,
+    }
     headers = {"Authorization": f"Bearer {token}"}
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -102,9 +120,7 @@ async def get_traffic_prediction(location: str, hour: int, day: str, token: str)
             if response.status_code == 200:
                 data = response.json()
                 return data.get("congestion_level")
-            logger.warning(
-                "Traffic service returned %s for prediction", response.status_code
-            )
+            logger.warning("Traffic service returned %s for prediction", response.status_code)
             return None
     except Exception as exc:
         logger.warning("Failed to fetch traffic prediction: %s", exc)

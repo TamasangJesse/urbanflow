@@ -1,5 +1,5 @@
 // UrbanFlow — ChatPanel.jsx
-// Sliding RAG chat panel — opens from the right, pushes map pushes map tp the left
+// Sliding RAG chat panel — opens from the right on desktop, full-screen on mobile.
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
@@ -79,12 +79,57 @@ export default function ChatPanel({ open, onClose }) {
   if (!open) return null;
 
   return (
-    <div
-      className="flex flex-col bg-white border-l border-[#E2E1DB] h-full"
-      style={{ width: '360px', minWidth: '360px' }}
-    >
+    <>
+      {/* ── Mobile: full-screen overlay ── */}
+      <div
+        className="
+          md:hidden
+          fixed inset-0 z-50
+          flex flex-col bg-white
+        "
+      >
+        <ChatPanelContent
+          messages={messages}
+          loading={loading}
+          question={question}
+          setQuestion={setQuestion}
+          sendMessage={sendMessage}
+          handleKeyDown={handleKeyDown}
+          onClose={onClose}
+          bottomRef={bottomRef}
+        />
+      </div>
+
+      {/* ── Desktop: side panel (original behaviour) ── */}
+      <div
+        className="
+          hidden md:flex flex-col
+          bg-white border-l border-[#E2E1DB] h-full
+        "
+        style={{ width: '360px', minWidth: '360px' }}
+      >
+        <ChatPanelContent
+          messages={messages}
+          loading={loading}
+          question={question}
+          setQuestion={setQuestion}
+          sendMessage={sendMessage}
+          handleKeyDown={handleKeyDown}
+          onClose={onClose}
+          bottomRef={bottomRef}
+        />
+      </div>
+    </>
+  );
+}
+
+// ─── Shared panel content ─────────────────────────────────────────────────────
+
+function ChatPanelContent({ messages, loading, question, setQuestion, sendMessage, handleKeyDown, onClose, bottomRef }) {
+  return (
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E1DB]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E1DB] flex-shrink-0">
         <div className="flex items-center gap-2">
           <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
             <path d="M14 2C14 2 15.5 9.5 20 14C15.5 18.5 14 26 14 26C14 26 12.5 18.5 8 14C12.5 9.5 14 2 14 2Z" fill="url(#gemini_grad)"/>
@@ -158,7 +203,7 @@ export default function ChatPanel({ open, onClose }) {
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-[#E2E1DB]">
+      <div className="px-4 py-3 border-t border-[#E2E1DB] flex-shrink-0">
         <div className="flex items-end gap-2 bg-[#F5F5F3] rounded-2xl px-3 py-2">
           <textarea
             rows={1}
@@ -182,6 +227,6 @@ export default function ChatPanel({ open, onClose }) {
         </div>
         <p className="text-[10px] text-[#7A7A72] text-center mt-2">Press Enter to send · Shift+Enter for new line</p>
       </div>
-    </div>
+    </>
   );
 }

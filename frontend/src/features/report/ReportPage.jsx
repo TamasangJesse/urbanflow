@@ -13,7 +13,15 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 const INCIDENT_TYPES  = ['Accident','Flooding','Roadblock','Pothole','Police Checkpoint','Construction','Broken Traffic Light','Other'];
 const SEVERITY_LEVELS = ['Low', 'Medium', 'High'];
 
-// ─── Location search input using Google Maps Geocoding ────────────────────────
+// ─── Severity config ──────────────────────────────────────────────────────────
+
+const SEVERITY_STYLES = {
+  Low:    { active: 'bg-[#EAF3DE] border-[#B8D98A] text-[#3A6B10]',   dot: 'bg-[#639922]', badge: 'bg-[#EAF3DE] text-[#3A6B10]' },
+  Medium: { active: 'bg-[#FAEEDA] border-[#E8C97A] text-[#7A4F10]',   dot: 'bg-[#BA7517]', badge: 'bg-[#FAEEDA] text-[#7A4F10]' },
+  High:   { active: 'bg-[#FCEBEB] border-[#F5C0B8] text-[#A32D2D]',   dot: 'bg-[#D85A30]', badge: 'bg-[#FCEBEB] text-[#A32D2D]' },
+};
+
+// ─── Location search ──────────────────────────────────────────────────────────
 
 function LocationSearch({ onLocationFound, disabled }) {
   const inputRef = useRef(null);
@@ -21,8 +29,6 @@ function LocationSearch({ onLocationFound, disabled }) {
   function handleSearch() {
     const query = inputRef.current?.value?.trim();
     if (!query) return;
-
-    // Use Google Maps Geocoding service
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode(
       { address: `${query}, Yaoundé, Cameroon` },
@@ -57,7 +63,7 @@ function LocationSearch({ onLocationFound, disabled }) {
         type="button"
         onClick={handleSearch}
         disabled={disabled}
-        className="px-4 py-2 bg-[#111210] text-white text-[13px] font-medium rounded-lg hover:bg-[#3D3D38] transition-colors disabled:opacity-60"
+        className="px-4 py-2 bg-[#111210] text-white text-[13px] font-medium rounded-lg hover:bg-[#3D3D38] transition-colors disabled:opacity-60 flex-shrink-0"
       >
         Search
       </button>
@@ -65,7 +71,62 @@ function LocationSearch({ onLocationFound, disabled }) {
   );
 }
 
-// ─── Inner form (needs to be inside APIProvider) ──────────────────────────────
+// ─── Incident card (past reports) ─────────────────────────────────────────────
+
+function IncidentCard({ incident, onResolve }) {
+  const sev = incident.severity || 'Low';
+  const styles = SEVERITY_STYLES[sev] || SEVERITY_STYLES.Low;
+
+  return (
+    <div className="group p-4 bg-white border border-[#E2E1DB] rounded-xl transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${styles.dot}`} />
+          <span className="text-[13px] font-semibold text-[#111210] truncate">{incident.type}</span>
+        </div>
+        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${styles.badge}`}>
+          {sev}
+        </span>
+      </div>
+
+      <p className="text-[12.5px] text-[#5F5E5A] leading-relaxed mb-3 line-clamp-2">
+        {incident.description}
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-[#7A7A72] min-w-0">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span className="truncate">
+            {incident.address || `${incident.latitude?.toFixed(4)}, ${incident.longitude?.toFixed(4)}`}
+          </span>
+        </div>
+        {incident.is_active && (
+          <button
+            type="button"
+            onClick={() => onResolve(incident._id || incident.id)}
+            className="flex-shrink-0 text-[11px] font-medium text-[#2563EB] hover:underline transition-colors"
+          >
+            Mark resolved
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Field label ──────────────────────────────────────────────────────────────
+
+function FieldLabel({ children }) {
+  return (
+    <label className="text-[11px] font-semibold tracking-widest uppercase text-[#7A7A72]">
+      {children}
+    </label>
+  );
+}
+
+// ─── Inner form ───────────────────────────────────────────────────────────────
 
 function ReportForm() {
   const {
@@ -78,205 +139,226 @@ function ReportForm() {
     error,
     myIncidents,
     loadingIncidents,
-    resolveIncident,           // ← add this
+    resolveIncident,
   } = useReport();
 
   return (
-    <div className="w-full max-w-lg pb-12">
+    <div className="w-full max-w-5xl mx-auto px-4 py-8 md:py-12">
 
-      {/* Header */}
+      {/* ── Page header ── */}
       <div className="mb-8">
-        <h1
-          className="text-[28px] font-bold text-[#111210] mb-1.5"
-          style={{ fontFamily: 'Georgia, serif', letterSpacing: '-0.5px' }}
-        >
-          Report an incident
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-full bg-[#FCEBEB] flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D85A30" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <span className="text-[11px] font-semibold tracking-widest uppercase text-[#7A7A72]">Incident reporting</span>
+        </div>
+        <h1 className="text-[26px] md:text-[32px] font-bold text-[#111210] leading-tight" style={{ fontFamily: 'Georgia, serif', letterSpacing: '-0.5px' }}>
+          Report what you see
         </h1>
-        <p className="text-[14px] text-[#7A7A72]">
-          Help other drivers by reporting what you see on the road.
+        <p className="text-[14px] text-[#7A7A72] mt-1.5">
+          Help other drivers navigate Yaoundé safely.
         </p>
       </div>
 
-      {/* Success banner */}
-      {success && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#EAF3DE] border border-[#B8D98A] rounded-xl text-[13px] text-[#3A6B10] mb-6">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          Incident reported successfully! Thank you for keeping Yaoundé safe.
-        </div>
-      )}
+      {/* ── Two-column layout ── */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-      {/* Error banner */}
-      {error && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#FCEBEB] border border-[#F5C0B8] rounded-xl text-[13px] text-[#A32D2D] mb-6">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          {error}
-        </div>
-      )}
+        {/* ── LEFT: Form card ── */}
+        <div className="w-full lg:max-w-[480px] lg:flex-shrink-0">
 
-      {/* Form card */}
-      <div className="bg-white border border-[#E2E1DB] rounded-2xl p-8 mb-8" style={{ boxShadow: '0 1px 3px rgba(17,18,16,0.06)' }}>
-        <div className="flex flex-col gap-5">
-
-          {/* Incident type */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[#3D3D38] uppercase tracking-wide">Incident type</label>
-            <select
-              value={form.type}
-              onChange={(e) => setField('type', e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 text-[13px] text-[#111210] bg-white border border-[#E2E1DB] rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors disabled:opacity-60"
-            >
-              <option value="">Select incident type…</option>
-              {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          {/* Severity */}
-          <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-medium text-[#3D3D38] uppercase tracking-wide">Severity</label>
-            <div className="flex gap-2">
-              {SEVERITY_LEVELS.map((level) => {
-                const styles = {
-                  Low:    { active: 'bg-[#EAF3DE] border-[#B8D98A] text-[#3A6B10]', inactive: 'bg-white border-[#E2E1DB] text-[#7A7A72]' },
-                  Medium: { active: 'bg-[#FAEEDA] border-[#E8C97A] text-[#7A4F10]', inactive: 'bg-white border-[#E2E1DB] text-[#7A7A72]' },
-                  High:   { active: 'bg-[#FCEBEB] border-[#F5C0B8] text-[#A32D2D]', inactive: 'bg-white border-[#E2E1DB] text-[#7A7A72]' },
-                };
-                const isActive = form.severity === level;
-                return (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setField('severity', level)}
-                    disabled={loading}
-                    className={`flex-1 py-2 rounded-lg border text-[13px] font-medium transition-colors ${isActive ? styles[level].active : styles[level].inactive}`}
-                  >
-                    {level}
-                  </button>
-                );
-              })}
+          {/* Banners */}
+          {success && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-[#EAF3DE] border border-[#B8D98A] rounded-xl text-[13px] text-[#3A6B10] mb-5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Incident reported — thank you for keeping Yaoundé safe!
             </div>
-          </div>
+          )}
+          {error && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-[#FCEBEB] border border-[#F5C0B8] rounded-xl text-[13px] text-[#A32D2D] mb-5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {error}
+            </div>
+          )}
 
-          {/* Description */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[#3D3D38] uppercase tracking-wide">Description</label>
-            <textarea
-              placeholder="Describe what you see — e.g. 'Two cars collided near Carrefour Nlongkak, blocking the right lane.'"
-              value={form.description}
-              onChange={(e) => setField('description', e.target.value)}
-              disabled={loading}
-              rows={4}
-              className="w-full px-3 py-2 text-[13px] text-[#111210] bg-white border border-[#E2E1DB] rounded-lg outline-none placeholder:text-[#7A7A72] focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors resize-none disabled:opacity-60"
-            />
-          </div>
+          <div className="bg-white border border-[#E2E1DB] rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(17,18,16,0.07)' }}>
 
-          {/* Location */}
-          <div className="flex flex-col gap-2">
-            <label className="text-[11px] font-medium text-[#3D3D38] uppercase tracking-wide">Location</label>
+            {/* Form top accent strip */}
+            <div className="h-1 w-full bg-gradient-to-r from-[#D85A30] via-[#E8C97A] to-[#2563EB]" />
 
-            {/* GPS status */}
-            {form.latitude && form.longitude ? (
-              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#EAF3DE] border border-[#B8D98A] rounded-lg">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A6B10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-                <span className="text-[12.5px] text-[#3A6B10] font-medium flex-1">
-                  {form.address
-                    ? form.address
-                    : `GPS: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`
-                  }
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation({ lat: null, lng: null, address: '' })}
-                  className="text-[11px] text-[#3A6B10] underline hover:no-underline"
+            <div className="p-6 flex flex-col gap-5">
+
+              {/* Incident type */}
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Incident type</FieldLabel>
+                <select
+                  value={form.type}
+                  onChange={(e) => setField('type', e.target.value)}
+                  disabled={loading}
+                  className="w-full px-3 py-2.5 text-[13px] text-[#111210] bg-white border border-[#E2E1DB] rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors disabled:opacity-60"
                 >
-                  Change
-                </button>
+                  <option value="">Select incident type…</option>
+                  {INCIDENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#FAEEDA] border border-[#E8C97A] rounded-lg">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A4F10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  <span className="text-[12.5px] text-[#7A4F10]">
-                    GPS unavailable — search for your location below.
-                  </span>
+
+              {/* Severity */}
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Severity</FieldLabel>
+                <div className="grid grid-cols-3 gap-2">
+                  {SEVERITY_LEVELS.map((level) => {
+                    const isActive = form.severity === level;
+                    const s = SEVERITY_STYLES[level];
+                    return (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setField('severity', level)}
+                        disabled={loading}
+                        className={`
+                          py-2.5 rounded-lg border text-[13px] font-medium transition-all
+                          flex items-center justify-center gap-1.5
+                          ${isActive
+                            ? s.active
+                            : error === 'Please select a severity level.'
+                              ? 'bg-white border-[#F5C0B8] text-[#A32D2D]'
+                              : 'bg-white border-[#E2E1DB] text-[#7A7A72] hover:border-[#C8C7C1]'
+                          }
+                        `}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full ${isActive ? s.dot : 'bg-[#C8C7C1]'}`} />
+                        {level}
+                      </button>
+                    );
+                  })}
                 </div>
-                <LocationSearch onLocationFound={setLocation} disabled={loading} />
               </div>
-            )}
-          </div>
 
-          {/* Submit */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            onClick={submitReport}
-            className="w-full !bg-[#111210] !rounded-xl !text-[15px] !font-semibold !py-3 mt-2"
-          >
-            {loading ? 'Submitting…' : 'Submit report'}
-          </Button>
-        </div>
-      </div>
+              {/* Description */}
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Description</FieldLabel>
+                <textarea
+                  placeholder="Describe what you see — e.g. 'Two cars collided near Carrefour Nlongkak, blocking the right lane.'"
+                  value={form.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                  disabled={loading}
+                  rows={4}
+                  className="w-full px-3 py-2.5 text-[13px] text-[#111210] bg-white border border-[#E2E1DB] rounded-lg outline-none placeholder:text-[#7A7A72] focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors resize-none disabled:opacity-60"
+                />
+              </div>
 
-      {/* ─── Past Incidents Section ─── */}
-      <div className="mt-4">
-        <h2 className="text-[18px] font-bold text-[#111210] mb-4">Your Reported Incidents</h2>
-        
-        {loadingIncidents ? (
-          <p className="text-[13px] text-[#7A7A72]">Loading your reports...</p>
-        ) : myIncidents.length === 0 ? (
-          <p className="text-[13px] text-[#7A7A72]">You haven't reported any incidents yet.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {myIncidents.map((incident) => (
-              <div 
-                key={incident.id || incident._id} 
-                className="p-4 bg-white border border-[#E2E1DB] rounded-xl shadow-sm"
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="font-bold text-[14px] text-[#111210]">{incident.type}</span>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                    incident.severity === 'High'   ? 'bg-[#FCEBEB] text-[#A32D2D]' : 
-                    incident.severity === 'Medium' ? 'bg-[#FAEEDA] text-[#7A4F10]' : 
-                                                     'bg-[#EAF3DE] text-[#3A6B10]'
-                  }`}>
-                    {incident.severity}
-                  </span>
-                </div>
-                
-                <p className="text-[13px] text-[#3D3D38] mb-2">{incident.description}</p>
-                
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] text-[#7A7A72] flex items-center gap-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {/* Location */}
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Location</FieldLabel>
+                {form.latitude && form.longitude ? (
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#EAF3DE] border border-[#B8D98A] rounded-lg">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A6B10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
                     </svg>
-                    {incident.address || `${incident.latitude?.toFixed(4)}, ${incident.longitude?.toFixed(4)}`}
-                  </div>
-
-                  {incident.is_active && (
+                    <span className="text-[12.5px] text-[#3A6B10] font-medium flex-1 truncate">
+                      {form.address || `GPS: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => resolveIncident(incident._id || incident.id)}
-                      className="text-[11px] text-[#7A7A72] underline hover:text-[#3D3D38] transition-colors"
+                      onClick={() => setLocation({ lat: null, lng: null, address: '' })}
+                      className="text-[11px] text-[#3A6B10] underline hover:no-underline flex-shrink-0"
                     >
-                      Mark as resolved
+                      Change
                     </button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#FAEEDA] border border-[#E8C97A] rounded-lg">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A4F10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <span className="text-[12.5px] text-[#7A4F10]">
+                        GPS unavailable — search for your location below.
+                      </span>
+                    </div>
+                    <LocationSearch onLocationFound={setLocation} disabled={loading} />
+                  </div>
+                )}
               </div>
-            ))}
+
+              {/* Submit */}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={loading}
+                onClick={submitReport}
+                className="w-full !bg-[#111210] !rounded-xl !text-[14px] !font-semibold !py-3 mt-1"
+              >
+                {loading ? 'Submitting…' : 'Submit report'}
+              </Button>
+
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* ── RIGHT: Past incidents panel ── */}
+        <div className="w-full lg:flex-1 min-w-0">
+          <div className="bg-white border border-[#E2E1DB] rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(17,18,16,0.07)' }}>
+
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E1DB]">
+              <div className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A7A72" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span className="text-[13px] font-semibold text-[#111210]">Your reports</span>
+              </div>
+              {myIncidents.length > 0 && (
+                <span className="text-[11px] font-medium px-2 py-0.5 bg-[#F0F6FF] text-[#185FA5] rounded-full">
+                  {myIncidents.length} total
+                </span>
+              )}
+            </div>
+
+            {/* Incidents list */}
+            <div className="p-4">
+              {loadingIncidents ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-20 bg-[#F7F6F2] rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : myIncidents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-10 h-10 rounded-full bg-[#F7F6F2] flex items-center justify-center mb-3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8C7C1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <p className="text-[13px] font-medium text-[#3D3D38]">No reports yet</p>
+                  <p className="text-[12px] text-[#7A7A72] mt-1">Your submitted incidents will appear here.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-h-[520px] overflow-y-auto pr-1">
+                  {myIncidents.map((incident) => (
+                    <IncidentCard
+                      key={incident.id || incident._id}
+                      incident={incident}
+                      onResolve={resolveIncident}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -289,8 +371,7 @@ export default function ReportPage() {
     <APIProvider apiKey={MAPS_LOADER_CONFIG.apiKey} libraries={MAPS_LOADER_CONFIG.libraries}>
       <div className="min-h-screen flex flex-col bg-[#F7F6F2]">
         <Navbar />
-        {/* Added overflow-y-auto below to guarantee standard page-level scrolling */}
-        <main className="flex-1 overflow-y-auto flex items-start justify-center py-12 px-4">
+        <main className="flex-1 overflow-y-auto">
           <ReportForm />
         </main>
       </div>

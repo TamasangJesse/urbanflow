@@ -30,6 +30,10 @@ class IncidentRepository:
         result = await incidents_collection.insert_one(document)
         return str(result.inserted_id)
 
+   
+   
+   
+   
     async def resolve_incident(self, incident_id: str) -> bool:
         """Set is_active to False — marks the incident as resolved."""
         result = await incidents_collection.update_one(

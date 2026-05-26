@@ -188,33 +188,62 @@ pipeline {
             }
         }
 
+        
+
+
         stage('Deploy') {
-            when {
+  b         when {
                 branch 'main'
-            }
+           }
             steps {
-                echo 'Deploying UrbanFlow to production...'
-                sh '''
-                    set -a && source .env && set +a
-                    docker compose -p urbanflow down
-                    docker compose -p urbanflow up -d
-                '''
-            }
-        }
+                 echo 'Deploying UrbanFlow to Kubernetes...'
+                 sh '''
+                 # Build and import each service image into k3s
+                 docker build -t urbanflow-api-gateway:latest ./services/api-gateway
+                 docker save urbanflow-api-gateway:latest | k3s ctr images import -
+
+                 docker build -t urbanflow-user-service:latest ./services/user-service
+                 docker save urbanflow-user-service:latest | k3s ctr images import -
+
+                 docker build -t urbanflow-incident-report-service:latest ./services/incident-report-service
+                 docker save urbanflow-incident-report-service:latest | k3s ctr images import -
+
+                 docker build -t urbanflow-notification-service:latest ./services/notification-service
+                 docker save urbanflow-notification-service:latest | k3s ctr images import -
+
+                 docker build -t urbanflow-traffic-intelligence-service:latest ./services/traffic-intelligence-service
+                 docker save urbanflow-traffic-intelligence-service:latest | k3s ctr images import -
+
+                 docker build -t urbanflow-rag-service:latest ./services/rag-service
+                 docker save urbanflow-rag-service:latest | k3s ctr images import -
+
+                 docker build \
+                    --build-arg VITE_API_BASE_URL=https://urbanflow.duckdns.org/api \
+                    --build-arg VITE_GOOGLE_MAPS_API_KEY=$(grep VITE_GOOGLE_MAPS_API_KEY frontend/.env | cut -d= -f2) \
+                    -t urbanflow-frontend:latest ./frontend
+                    docker save urbanflow-frontend:latest | k3s ctr images import -
+
+                   # Rolling restart all deployments
+                     KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl rollout restart deployment -n urbanflow
+              '''
+     }
+       }
 
     }
+
+    
+
 
     post {
         always {
             echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
-            sh 'docker compose -p urbanflow down || true'
-        }
+    }
         success {
-            echo 'UrbanFlow deployed successfully'
-        }
+            echo 'UrbanFlow deployed successfully to Kubernetes'
+    }
         failure {
             echo 'Pipeline failed - check test results'
-        }
     }
+}
 
 }

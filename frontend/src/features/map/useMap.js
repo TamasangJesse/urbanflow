@@ -83,7 +83,7 @@ export function useMap() {
           mapService.updateLocation(user.id, coords.lat, coords.lng, activeRoutePoints).catch(() => {});
         },
         () => {}, 
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true , timeout: 10000, maximumAge: 30000 }
       );
     }
     fetchIncidents();
@@ -144,15 +144,25 @@ export function useMap() {
 
 
 
-
   useEffect(() => {
-   function handleIncidentResolved(e) {
+    function handleReconnect() {
+      fetchIncidents();
+    }
+    window.addEventListener('URBANFLOW_WS_RECONNECTED', handleReconnect);
+    return () => window.removeEventListener('URBANFLOW_WS_RECONNECTED', handleReconnect);
+  }, []);
+
+
+useEffect(() => {
+  function handleIncidentResolved(e) {
     const { incident_id, address } = e.detail || {};
+    console.log('[RESOLVED HANDLER]', incident_id);
     if (!incident_id) return;
 
-    setIncidents((prev) =>
-      prev.filter((inc) => (inc._id ?? inc.id) !== incident_id)
-    );
+    setIncidents((prev) => {
+      console.log('[RESOLVED FILTER] prev length:', prev.length);
+      return prev.filter((inc) => (inc._id ?? inc.id) !== incident_id);
+    });
 
     if (detectedIncident?._id === incident_id || detectedIncident?.id === incident_id) {
       setShowRerouteBanner(false);

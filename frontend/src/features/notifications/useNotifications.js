@@ -66,6 +66,7 @@ export function useNotifications() {
 
         // Real-time incident resolved — remove from map instantly
         if (notification.type === 'incident_resolved') {
+          console.log('[WS] Resolved received:', notification); 
            window.dispatchEvent(new CustomEvent('URBANFLOW_INCIDENT_RESOLVED', {
              detail: {
              incident_id:   notification.incident_id,
@@ -102,6 +103,8 @@ export function useNotifications() {
       console.log('[WS] Closed — will reconnect in 5s if still authenticated');
       if (isAuthRef.current && userIdRef.current && tokenRef.current) {
         reconnectTimeoutRef.current = setTimeout(openWebSocket, 5000);
+
+         window.dispatchEvent(new CustomEvent('URBANFLOW_WS_RECONNECTED'));
       }
     };
 

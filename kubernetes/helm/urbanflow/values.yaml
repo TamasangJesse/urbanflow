@@ -34,7 +34,7 @@ secrets:
 
   # External API keys — replace with real base64-encoded values
   # echo -n "your-actual-gemini-key" | base64
-  geminiApiKey: UkVQTEFDRV9XSVRIX1JFQUxfR0VNSU5JX0tFWQ==
+  zaiApiKey: ZjcyNjVhZTIyZDlkNDAxNjg2OGRlN2YwM2JjOGFlYzAuaXBPT3ByZTZJdWtmWG5Bbw==
   # echo -n "your-actual-maps-key" | base64
   viteMapsApiKey: UkVQTEFDRV9XSVRIX1JFQUxfTUFQU19LRVk=
 

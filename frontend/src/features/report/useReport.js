@@ -70,6 +70,22 @@ export function useReport() {
   }
 
   async function submitReport() {
+    // Validate before submitting
+  if (!form.type) {
+    setError('Please select an incident type.');
+    return;
+  }
+  if (!form.severity) {
+    setError('Please select a severity level.');
+    return;
+  }
+  if (!form.latitude || !form.longitude) {
+    setError('Please enter your location.');
+    return;
+  }
+
+
+
     setLoading(true);
     setError(null);
     setSuccess(false);

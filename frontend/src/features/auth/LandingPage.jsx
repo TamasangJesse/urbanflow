@@ -8,26 +8,29 @@ function NavBar() {
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#F7F6F2]/90 backdrop-blur-lg border-b border-[#E2E1DB]"
-      style={{ height: '68px', paddingLeft: '52px', paddingRight: '52px' }}
+      style={{ height: '68px', paddingLeft: '24px', paddingRight: '24px' }}
     >
       <span className="text-[20px] font-bold select-none" style={{ fontFamily: 'Georgia, serif', letterSpacing: '-0.4px' }}>
         <span className="text-[#111210]">Urban</span>
         <span className="text-[#2563EB]">Flow</span>
       </span>
-      <div className="flex items-center gap-8">
+
+      {/* Nav links — hidden on mobile */}
+      <div className="hidden md:flex items-center gap-8">
         <a href="#how-it-works" className="text-[14px] font-medium text-[#7A7A72] hover:text-[#111210] transition-colors">How it works</a>
         <a href="#features"     className="text-[14px] font-medium text-[#7A7A72] hover:text-[#111210] transition-colors">Features</a>
       </div>
-      <div className="flex items-center gap-2.5">
+
+      <div className="flex items-center gap-2">
         <Link
           to="/login"
-          className="px-5 py-2 rounded-lg text-[14px] font-medium text-[#3D3D38] border border-[#C8C7BF] hover:bg-[#EFEDE7] hover:border-[#7A7A72] transition-colors"
+          className="px-4 py-2 rounded-lg text-[13px] font-medium text-[#3D3D38] border border-[#C8C7BF] hover:bg-[#EFEDE7] hover:border-[#7A7A72] transition-colors"
         >
           Log in
         </Link>
         <Link
           to="/register"
-          className="px-5 py-2 rounded-lg text-[14px] font-semibold text-white bg-[#111210] hover:bg-[#3D3D38] transition-colors"
+          className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white bg-[#111210] hover:bg-[#3D3D38] transition-colors"
           style={{ boxShadow: '0 1px 3px rgba(17,18,16,0.25)' }}
         >
           Get started
@@ -40,7 +43,7 @@ function NavBar() {
 function MapIllustration() {
   return (
     <div
-      className="bg-white border border-[#E2E1DB] rounded-[20px] overflow-hidden"
+      className="bg-white border border-[#E2E1DB] rounded-[20px] overflow-hidden w-full"
       style={{ boxShadow: '0 32px 64px rgba(17,18,16,0.12), 0 12px 30px rgba(17,18,16,0.08)' }}
     >
       {/* Card header */}
@@ -53,7 +56,7 @@ function MapIllustration() {
       </div>
 
       {/* Map body */}
-      <div className="relative bg-[#EDE9E0]" style={{ height: '310px' }}>
+      <div className="relative bg-[#EDE9E0]" style={{ height: '280px' }}>
         {/* Floating alert pill */}
         <div
           className="absolute top-9 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white border border-[#E2E1DB] rounded-full px-4 py-1.5 text-[12.5px] font-medium text-[#3D3D38] whitespace-nowrap z-10"
@@ -132,8 +135,8 @@ function MapIllustration() {
 function HeroSection() {
   return (
     <section
-      className="min-h-screen grid items-center bg-[#F7F6F2] relative overflow-hidden"
-      style={{ gridTemplateColumns: '1fr 1fr', padding: '120px 52px 60px', gap: '56px' }}
+      className="min-h-screen bg-[#F7F6F2] relative overflow-hidden"
+      style={{ paddingTop: '88px' }}
     >
       {/* Subtle grid texture */}
       <div
@@ -149,52 +152,58 @@ function HeroSection() {
         style={{ background: 'radial-gradient(ellipse 65% 60% at 50% 50%, transparent 40%, #F7F6F2 100%)' }}
       />
 
-      {/* Left — copy */}
-      <div className="relative z-10">
-        <div
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E2E1DB] rounded-full text-[12.5px] font-medium text-[#3D3D38] mb-7"
-          style={{ boxShadow: '0 1px 3px rgba(17,18,16,0.06)' }}
-        >
-          <span className="relative flex w-2 h-2">
-            <span className="absolute inline-flex w-full h-full rounded-full bg-[#2563EB] opacity-40 animate-ping" />
-            <span className="relative flex w-2 h-2 rounded-full bg-[#2563EB]" />
-          </span>
-          Built for Yaoundé drivers
+      {/* Two-column on desktop, single column on mobile */}
+      <div
+        className="relative z-10 grid grid-cols-1 lg:grid-cols-2 items-center gap-10 lg:gap-14"
+        style={{ padding: '40px 24px 60px', maxWidth: '1280px', margin: '0 auto' }}
+      >
+        {/* Left — copy */}
+        <div>
+          <div
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E2E1DB] rounded-full text-[12.5px] font-medium text-[#3D3D38] mb-7"
+            style={{ boxShadow: '0 1px 3px rgba(17,18,16,0.06)' }}
+          >
+            <span className="relative flex w-2 h-2">
+              <span className="absolute inline-flex w-full h-full rounded-full bg-[#2563EB] opacity-40 animate-ping" />
+              <span className="relative flex w-2 h-2 rounded-full bg-[#2563EB]" />
+            </span>
+            Built for Yaoundé drivers
+          </div>
+
+          <h1
+            className="font-bold text-[#111210] leading-none mb-5"
+            style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(40px, 8vw, 68px)', letterSpacing: '-1.5px' }}
+          >
+            Navigate<br />
+            <span className="font-light italic text-[#7A7A72]">smarter.</span><br />
+            Drive safer.
+          </h1>
+
+          <p className="text-[16px] text-[#7A7A72] leading-relaxed mb-9 max-w-sm">
+            Real-time traffic predictions, community incident reports, and automatic proximity alerts — all in one clean interface built for Yaoundé roads.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/register"
+              className="px-7 py-3 rounded-xl text-[15px] font-semibold text-white bg-[#111210] hover:bg-[#1c1e1b] transition-colors"
+              style={{ boxShadow: '0 2px 8px rgba(17,18,16,0.28)' }}
+            >
+              Create free account
+            </Link>
+            <Link
+              to="/login"
+              className="px-6 py-3 rounded-xl text-[15px] font-medium text-[#3D3D38] border border-[#C8C7BF] hover:bg-white hover:border-[#B0AFA7] transition-colors"
+            >
+              Log in
+            </Link>
+          </div>
         </div>
 
-        <h1
-          className="font-bold text-[#111210] leading-none mb-5"
-          style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(44px, 5.5vw, 68px)', letterSpacing: '-1.5px' }}
-        >
-          Navigate<br />
-          <span className="font-light italic text-[#7A7A72]">smarter.</span><br />
-          Drive safer.
-        </h1>
-
-        <p className="text-[16px] text-[#7A7A72] leading-relaxed mb-9 max-w-sm">
-          Real-time traffic predictions, community incident reports, and automatic proximity alerts — all in one clean interface built for Yaoundé roads.
-        </p>
-
-        <div className="flex items-center gap-3">
-          <Link
-            to="/register"
-            className="px-7 py-3 rounded-xl text-[15px] font-semibold text-white bg-[#111210] hover:bg-[#1c1e1b] transition-colors"
-            style={{ boxShadow: '0 2px 8px rgba(17,18,16,0.28)' }}
-          >
-            Create free account
-          </Link>
-          <Link
-            to="/login"
-            className="px-6 py-3 rounded-xl text-[15px] font-medium text-[#3D3D38] border border-[#C8C7BF] hover:bg-white hover:border-[#B0AFA7] transition-colors"
-          >
-            Log in
-          </Link>
+        {/* Right — map card */}
+        <div>
+          <MapIllustration />
         </div>
-      </div>
-
-      {/* Right — map card */}
-      <div className="relative z-10">
-        <MapIllustration />
       </div>
     </section>
   );
@@ -208,19 +217,23 @@ function StatsBar() {
     { value: 'Real‑time', label: 'Incident reporting & alerts' },
   ];
   return (
-    <section className="grid grid-cols-4 bg-white border-y border-[#E2E1DB]">
+    <section className="grid grid-cols-2 lg:grid-cols-4 bg-white border-y border-[#E2E1DB]">
       {stats.map((stat, i) => (
         <div
           key={i}
-          className={`flex flex-col items-center justify-center py-9 text-center hover:bg-[#F7F6F2] transition-colors ${i < stats.length - 1 ? 'border-r border-[#E2E1DB]' : ''}`}
+          className={`flex flex-col items-center justify-center py-8 text-center hover:bg-[#F7F6F2] transition-colors
+            ${i % 2 !== 1 ? 'border-r border-[#E2E1DB]' : ''}
+            ${i < 2 ? 'border-b lg:border-b-0 border-[#E2E1DB]' : ''}
+            lg:border-r lg:last:border-r-0
+          `}
         >
           <span
-            className="text-[38px] font-bold text-[#111210] leading-none mb-1.5"
+            className="text-[32px] lg:text-[38px] font-bold text-[#111210] leading-none mb-1.5"
             style={{ fontFamily: 'Georgia, serif', letterSpacing: '-1px' }}
           >
             {stat.value}
           </span>
-          <span className="text-[13px] text-[#7A7A72]">{stat.label}</span>
+          <span className="text-[12px] lg:text-[13px] text-[#7A7A72] px-2">{stat.label}</span>
         </div>
       ))}
     </section>
@@ -246,18 +259,18 @@ function FeaturesSection() {
     },
   ];
   return (
-    <section id="features" className="grid grid-cols-3 gap-6 bg-[#F7F6F2]" style={{ padding: '80px 52px' }}>
+    <section id="features" className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[#F7F6F2]" style={{ padding: '60px 24px' }}>
       {features.map((f, i) => (
         <div
           key={i}
-          className="bg-white border border-[#E2E1DB] rounded-2xl p-8 hover:-translate-y-1 hover:border-[#C8C7BF] transition-all duration-200"
+          className="bg-white border border-[#E2E1DB] rounded-2xl p-7 hover:-translate-y-1 hover:border-[#C8C7BF] transition-all duration-200"
           style={{ boxShadow: '0 1px 3px rgba(17,18,16,0.06)' }}
         >
           <div className="w-10 h-10 flex items-center justify-center bg-[#EFEDE7] border border-[#E2E1DB] rounded-xl text-lg mb-5">
             {f.icon}
           </div>
           <h3
-            className="text-[19px] font-semibold text-[#111210] mb-2.5"
+            className="text-[18px] font-semibold text-[#111210] mb-2.5"
             style={{ fontFamily: 'Georgia, serif', letterSpacing: '-0.3px' }}
           >
             {f.name}
@@ -277,19 +290,20 @@ function HowItWorksSection() {
     { number: '04', title: 'Stay informed',    description: 'Receive live alerts for incidents within 5 km as you drive.' },
   ];
   return (
-    <section id="how-it-works" className="bg-white border-y border-[#E2E1DB]" style={{ padding: '96px 52px' }}>
+    <section id="how-it-works" className="bg-white border-y border-[#E2E1DB]" style={{ padding: '72px 24px' }}>
       <div className="text-[12px] font-semibold tracking-widest uppercase text-[#2563EB] mb-3.5">Process</div>
       <h2
         className="font-bold text-[#111210] mb-3"
-        style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(30px, 3.5vw, 44px)', letterSpacing: '-0.8px' }}
+        style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(28px, 4vw, 44px)', letterSpacing: '-0.8px' }}
       >
         Up and running in four steps.
       </h2>
-      <p className="text-[15px] text-[#7A7A72] mb-14 max-w-md">
+      <p className="text-[15px] text-[#7A7A72] mb-12 max-w-md">
         No complicated setup. Just sign up, enter your route, and let UrbanFlow do the rest.
       </p>
 
-      <div className="grid grid-cols-4 relative">
+      {/* Desktop: 4-column with horizontal connector line */}
+      <div className="hidden md:grid grid-cols-4 relative">
         <div
           className="absolute border-t border-[#C8C7BF]"
           style={{ top: '22px', left: 'calc(12.5% + 22px)', right: 'calc(12.5% + 22px)', zIndex: 0 }}
@@ -304,6 +318,31 @@ function HowItWorksSection() {
             </div>
             <div className="text-[15px] font-semibold text-[#111210] mb-2">{step.title}</div>
             <p className="text-[13.5px] text-[#7A7A72] leading-relaxed">{step.description}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: vertical stepper */}
+      <div className="flex flex-col gap-0 md:hidden">
+        {steps.map((step, i) => (
+          <div key={i} className="flex gap-5">
+            {/* Left: number + vertical line */}
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div
+                className="w-11 h-11 rounded-full bg-[#111210] text-white flex items-center justify-center text-[13px] font-semibold flex-shrink-0"
+                style={{ boxShadow: '0 4px 12px rgba(17,18,16,0.08)' }}
+              >
+                {step.number}
+              </div>
+              {i < steps.length - 1 && (
+                <div className="w-px flex-1 bg-[#C8C7BF] my-2" style={{ minHeight: '32px' }} />
+              )}
+            </div>
+            {/* Right: text */}
+            <div className="pb-8">
+              <div className="text-[15px] font-semibold text-[#111210] mb-1.5 mt-2.5">{step.title}</div>
+              <p className="text-[13.5px] text-[#7A7A72] leading-relaxed">{step.description}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -343,19 +382,19 @@ function ReviewsSection() {
   ];
 
   return (
-    <section className="bg-[#F7F6F2]" style={{ padding: '96px 52px' }}>
+    <section className="bg-[#F7F6F2]" style={{ padding: '72px 24px' }}>
       <div className="text-[12px] font-semibold tracking-widest uppercase text-[#2563EB] mb-3.5">Testimonials</div>
       <h2
         className="font-bold text-[#111210] mb-3"
-        style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(30px, 3.5vw, 44px)', letterSpacing: '-0.8px' }}
+        style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(28px, 4vw, 44px)', letterSpacing: '-0.8px' }}
       >
         Trusted by Yaoundé drivers.
       </h2>
-      <p className="text-[15px] text-[#7A7A72] mb-12 max-w-md">
+      <p className="text-[15px] text-[#7A7A72] mb-10 max-w-md">
         Over 12,000 drivers use UrbanFlow every day to beat traffic on Yaoundé's roads.
       </p>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {reviews.map((r, i) => (
           <div
             key={i}
@@ -391,11 +430,14 @@ function ReviewsSection() {
 
 function CTABanner() {
   return (
-    <section className="bg-[#111210] flex items-center justify-between gap-10" style={{ padding: '80px 52px' }}>
+    <section
+      className="bg-[#111210] flex flex-col md:flex-row items-start md:items-center justify-between gap-8"
+      style={{ padding: '60px 24px' }}
+    >
       <div className="max-w-xl">
         <h2
           className="font-bold text-white mb-3"
-          style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(28px, 3vw, 40px)', letterSpacing: '-0.8px' }}
+          style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(26px, 4vw, 40px)', letterSpacing: '-0.8px' }}
         >
           Ready to drive smarter?
         </h2>
@@ -403,7 +445,7 @@ function CTABanner() {
           Join thousands of Yaoundé drivers already using UrbanFlow to beat traffic every day. Free to get started — always.
         </p>
       </div>
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
         <Link
           to="/register"
           className="px-7 py-3 rounded-xl text-[15px] font-semibold text-[#111210] bg-white hover:bg-[#F0EFE9] transition-colors whitespace-nowrap"
@@ -427,9 +469,14 @@ function Footer() {
   const legalLinks   = ['Privacy policy', 'Terms of service', 'Cookie policy'];
 
   return (
-    <footer className="bg-[#111210] border-t border-white/5" style={{ padding: '60px 52px 36px' }}>
-      <div className="grid gap-12 mb-12" style={{ gridTemplateColumns: '1.8fr 1fr 1fr 1fr' }}>
-        <div>
+    <footer className="bg-[#111210] border-t border-white/5" style={{ padding: '52px 24px 32px' }}>
+      {/* Top grid: brand col + 3 link columns */}
+      <div
+        className="grid gap-10 mb-10"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}
+      >
+        {/* Brand */}
+        <div className="col-span-full sm:col-span-1" style={{ gridColumn: 'span 1' }}>
           <span className="text-[18px] font-bold" style={{ fontFamily: 'Georgia, serif' }}>
             <span className="text-white">Urban</span>
             <span className="text-[#6B9FFF]">Flow</span>
@@ -477,7 +524,8 @@ function Footer() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-7 border-t border-white/5">
+      {/* Bottom bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-white/5">
         <span className="text-[13px] text-white/25">© 2026 UrbanFlow · SEN3244 · Made in Yaoundé 🇨🇲</span>
         <div className="flex gap-5">
           {['Privacy', 'Terms', 'Cookies'].map((l) => (
