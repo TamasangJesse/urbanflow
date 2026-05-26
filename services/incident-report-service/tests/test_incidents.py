@@ -79,14 +79,16 @@ async def test_report_incident(mock_publish, mock_save, client, sample_incident)
 
 
 @pytest.mark.asyncio
+@patch("cqrs.commands.redis_client.xadd", new_callable=AsyncMock)
 @patch("cqrs.commands.incident_repository.find_by_id", new_callable=AsyncMock)
 @patch("cqrs.commands.incident_repository.resolve_incident", new_callable=AsyncMock)
-async def test_resolve_incident(mock_resolve, mock_find_by_id, client):
+async def test_resolve_incident(mock_resolve, mock_find_by_id, mock_xadd, client):
     """
     PUT /incidents/{id}/resolve
     Should mark the incident as inactive.
     """
     mock_resolve.return_value = True
+    mock_xadd.return_value = None
     mock_find_by_id.return_value = {
         "_id": "665f3a2b1c4e2d001a8b4567",
         "type": "accident",
@@ -106,21 +108,28 @@ async def test_resolve_incident(mock_resolve, mock_find_by_id, client):
     assert data["incident_id"] == "665f3a2b1c4e2d001a8b4567"
 
 
-
 @pytest.mark.asyncio
+@patch("cqrs.commands.redis_client.xadd", new_callable=AsyncMock)
 @patch("cqrs.commands.incident_repository.find_by_id", new_callable=AsyncMock)
 @patch("cqrs.commands.incident_repository.resolve_incident", new_callable=AsyncMock)
-async def test_resolve_incident_not_found(mock_resolve, mock_find_by_id, client):
+async def test_resolve_incident_not_found(mock_resolve, mock_find_by_id, mock_xadd, client):
     """
     PUT /incidents/{id}/resolve
     Should return 404 if the incident does not exist.
     """
     mock_resolve.return_value = False
+    mock_xadd.return_value = None
     mock_find_by_id.return_value = None
 
     response = await client.put("/incidents/nonexistentid/resolve")
 
     assert response.status_code == 404
+
+
+
+
+
+
 
 @pytest.mark.asyncio
 @patch("cqrs.commands.incident_repository.delete_incident", new_callable=AsyncMock)
