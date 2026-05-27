@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +15,32 @@ TRAFFIC_SERVICE_URL  = os.getenv("TRAFFIC_SERVICE_URL",  "http://traffic-intelli
 DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
-def extract_location(question: str) -> Optional[str]:
-    """Extract any capitalized place name from the question."""
-    match = re.search(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b', question)
-    if match:
-        return match.group(1)
-    return None
+async def extract_location_with_llm(question: str) -> Optional[str]:
+    """Use the LLM to extract the location name from the question."""
+    try:
+        client = OpenAI(
+            api_key=os.getenv("ZAI_API_KEY"),
+            base_url="https://open.bigmodel.cn/api/paas/v4",
+        )
+        response = client.chat.completions.create(
+            model="glm-4.7-flashx",
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Extract only the location name from this question. "
+                    "Return just the location name with no explanation, "
+                    "punctuation, or extra words. "
+                    "If there is no location, return the word NULL.\n\n"
+                    f"Question: {question}"
+                )
+            }],
+            max_tokens=20,
+        )
+        result = response.choices[0].message.content.strip()
+        return None if result.upper() == "NULL" else result
+    except Exception as exc:
+        logger.warning("LLM location extraction failed: %s", exc)
+        return None
 
 
 def extract_hour(question: str) -> int:
@@ -81,7 +102,7 @@ async def get_coordinates(location: str) -> tuple[float, float]:
                     return float(data[0]["lat"]), float(data[0]["lon"])
     except Exception as exc:
         logger.warning("Geocoding failed for %s: %s", location, exc)
-    return (3.8667, 11.5167)  # fallback to Yaoundé center
+    return (3.8667, 11.5167)
 
 
 async def get_nearby_incidents(latitude: float, longitude: float, token: str) -> list:

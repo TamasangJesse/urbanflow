@@ -15,6 +15,7 @@ This path is defined once in MODEL_PATH below — change it here if needed.
 """
 
 import os
+import math
 import logging
 import joblib
 import pandas as pd
@@ -29,27 +30,25 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # model.pkl lives in the ml_model/ folder at the project root inside container
-# Matches the ml_model/ folder in your VPS project structure
 # ---------------------------------------------------------------------------
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/ml_model/model.pkl")
 
 # ---------------------------------------------------------------------------
 # Feature columns the model trains and predicts on.
-# These must match exactly what the DB stores — no magic strings elsewhere.
 # ---------------------------------------------------------------------------
 FEATURE_COLUMNS = ["hour", "day_of_week_encoded", "latitude", "longitude"]
 TARGET_COLUMN   = "congestion_level"
 
-# Day of week encoding — consistent order, never changes between train and predict
 DAY_ORDER = {
-    "Monday": 0,
-    "Tuesday": 1,
-    "Wednesday": 2,
-    "Thursday": 3,
-    "Friday": 4,
-    "Saturday": 5,
-    "Sunday": 6,
+    "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+    "Friday": 4, "Saturday": 5, "Sunday": 6,
 }
+
+# ---------------------------------------------------------------------------
+# Radius within which an incident affects a predicted location.
+# 1.0 km covers most Yaoundé intersections and their surroundings.
+# ---------------------------------------------------------------------------
+BOOST_RADIUS_KM = 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -59,23 +58,11 @@ DAY_ORDER = {
 def encode_features(records: list[dict]) -> pd.DataFrame:
     """
     Convert a list of raw traffic record dicts into a clean feature DataFrame.
-    Called by both train_model() and the /predict endpoint.
-
-    Input:  list of dicts with keys: hour, day_of_week, latitude, longitude
-    Output: DataFrame with columns matching FEATURE_COLUMNS exactly
-
-    Encoding decisions:
-      - day_of_week  → integer 0–6 via DAY_ORDER (ordinal, not one-hot)
-                       Random Forest handles ordinal encoding well for cyclical
-                       features like days of the week.
-      - hour         → kept as integer 0–23, already numeric
-      - lat/lng      → kept as float, give the model geographic signal
+    Called by both train_model() and predict_congestion().
     """
     df = pd.DataFrame(records)
-
     df["day_of_week_encoded"] = df["day_of_week"].map(DAY_ORDER)
 
-    # Guard: if any day_of_week value is not in DAY_ORDER, map() returns NaN
     if df["day_of_week_encoded"].isna().any():
         bad = df[df["day_of_week_encoded"].isna()]["day_of_week"].unique().tolist()
         raise ValueError(
@@ -93,16 +80,14 @@ def encode_features(records: list[dict]) -> pd.DataFrame:
 def train_model() -> dict:
     """
     Full training pipeline:
-      1. Load all records from PostgreSQL via TrafficQueryRepository (query side)
+      1. Load all records from PostgreSQL
       2. Encode features
-      3. Encode target labels
-      4. Train/test split (80/20)
-      5. Fit RandomForestClassifier
-      6. Log classification report
-      7. Save model + label encoder together to MODEL_PATH as a single joblib file
+      3. Train/test split (80/20)
+      4. Fit RandomForestClassifier
+      5. Save model + label encoder to MODEL_PATH
 
-    Returns a summary dict consumed by main.py to log startup info.
-    Raises RuntimeError if the DB has fewer than 10 records — nothing to train on.
+    Returns a summary dict consumed by main.py.
+    Raises RuntimeError if fewer than 10 records exist.
     """
     logger.info("Training pipeline started — loading data from PostgreSQL ...")
 
@@ -117,34 +102,26 @@ def train_model() -> dict:
 
     logger.info(f"Loaded {len(records)} records from traffic_data.")
 
-    # --- Features ---
     X = encode_features(records)
 
-    # --- Target ---
-    df_target = pd.DataFrame(records)
+    df_target     = pd.DataFrame(records)
     label_encoder = LabelEncoder()
-    y = label_encoder.fit_transform(df_target[TARGET_COLUMN])
+    y             = label_encoder.fit_transform(df_target[TARGET_COLUMN])
 
-    # --- Train/test split ---
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y,   # keeps class proportions balanced in both splits
+        X, y, test_size=0.2, random_state=42, stratify=y,
     )
 
-    # --- Fit ---
     clf = RandomForestClassifier(
-        n_estimators=100,   # 100 trees — good balance of accuracy vs speed on VPS
-        max_depth=12,       # prevents overfitting on our structured dataset
+        n_estimators=100,
+        max_depth=12,
         random_state=42,
-        n_jobs=-1,          # use all available CPU cores on the VPS
+        n_jobs=-1,
     )
     clf.fit(X_train, y_train)
 
-    # --- Evaluate ---
-    y_pred  = clf.predict(X_test)
-    report  = classification_report(
+    y_pred = clf.predict(X_test)
+    report = classification_report(
         y_test, y_pred,
         target_names=label_encoder.classes_,
         output_dict=True,
@@ -154,32 +131,74 @@ def train_model() -> dict:
         classification_report(y_test, y_pred, target_names=label_encoder.classes_),
     )
 
-    # --- Save model + label encoder together ---
-    # Saving both in one file means load_model() always gets a consistent pair.
-    # If you retrain with different classes, the encoder updates automatically.
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     joblib.dump({"model": clf, "label_encoder": label_encoder}, MODEL_PATH)
     logger.info(f"Model saved to {MODEL_PATH}")
 
-    accuracy = report["accuracy"]
     return {
-        "status":          "trained",
-        "records_used":    len(records),
-        "test_accuracy":   round(accuracy, 4),
-        "model_path":      MODEL_PATH,
-        "classes":         label_encoder.classes_.tolist(),
+        "status":        "trained",
+        "records_used":  len(records),
+        "test_accuracy": round(report["accuracy"], 4),
+        "model_path":    MODEL_PATH,
+        "classes":       label_encoder.classes_.tolist(),
     }
 
 
 # ---------------------------------------------------------------------------
-# 3. LOAD + PREDICT
+# 3. PROXIMITY HELPERS
+# ---------------------------------------------------------------------------
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """
+    Calculate the great-circle distance in km between two lat/lng points.
+    Used to check if an incident is close enough to affect a predicted location.
+    """
+    R    = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a    = (math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlng / 2) ** 2)
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _find_nearby_boost(
+    latitude: float,
+    longitude: float,
+    active_incident_boosts: dict,
+) -> dict | None:
+    """
+    Return the highest-severity boost within BOOST_RADIUS_KM of the given
+    coordinates, or None if no active incidents are nearby.
+    If multiple incidents are within range, returns the most severe one.
+    """
+    severity_rank = {"Medium": 1, "High": 2, "Very High": 3}
+    best: dict | None = None
+
+    for incident_id, boost in active_incident_boosts.items():
+        distance = _haversine_km(
+            latitude, longitude,
+            boost["latitude"], boost["longitude"],
+        )
+        if distance <= BOOST_RADIUS_KM:
+            if best is None or (
+                severity_rank.get(boost["congestion_level"], 0)
+                > severity_rank.get(best["congestion_level"], 0)
+            ):
+                best = boost
+
+    return best
+
+
+# ---------------------------------------------------------------------------
+# 4. LOAD + PREDICT
 # ---------------------------------------------------------------------------
 
 def load_model() -> dict:
     """
     Load the saved model and label encoder from MODEL_PATH.
     Called once at startup by main.py and cached — not reloaded per request.
-    Raises FileNotFoundError if model.pkl does not exist yet.
     """
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(
@@ -203,34 +222,33 @@ def predict_congestion(
     Called by GET /predict on every request.
 
     Checks active_incident_boosts FIRST before calling the ML model.
-    If an active, non-expired incident boost exists for this location,
-    returns the boosted congestion level immediately — model is not called.
-
-    model_bundle — the dict returned by load_model():
-        {"model": RandomForestClassifier, "label_encoder": LabelEncoder}
-
-    active_incident_boosts — module-level dict managed by consume_incident_stream():
-        {"Bastos": {"congestion_level": "Very High", "expires_at": datetime}}
+    Boost matching is done by proximity (lat/lng within BOOST_RADIUS_KM),
+    not by location name. Boosts have no expiry — they stay until the
+    incident is resolved via the Incident Report Service.
 
     Returns:
-        {"location": str, "day_of_week": str, "hour": int,
-         "congestion_level": str, "confidence": float, "boosted": bool}
+        {
+          "location":         str,
+          "day_of_week":      str,
+          "hour":             int,
+          "congestion_level": str,    e.g. "High"
+          "confidence":       float,  e.g. 0.87
+          "boosted":          bool    True if an incident override is active
+        }
     """
-    from datetime import datetime
-
     # ── Incident boost check — runs BEFORE the ML model ──────────────────────
     if active_incident_boosts:
-        boost = active_incident_boosts.get(location_name)
-        if boost and boost["expires_at"] > datetime.utcnow():
+        matched_boost = _find_nearby_boost(latitude, longitude, active_incident_boosts)
+        if matched_boost:
             logger.info(
-                "Incident boost active for '%s' — returning '%s' without calling model.",
-                location_name, boost["congestion_level"],
+                "Incident boost active near '%s' — returning '%s' without calling model.",
+                location_name, matched_boost["congestion_level"],
             )
             return {
                 "location":         location_name,
                 "day_of_week":      day_of_week,
                 "hour":             hour,
-                "congestion_level": boost["congestion_level"],
+                "congestion_level": matched_boost["congestion_level"],
                 "confidence":       1.0,
                 "boosted":          True,
             }
@@ -239,7 +257,6 @@ def predict_congestion(
     clf           = model_bundle["model"]
     label_encoder = model_bundle["label_encoder"]
 
-    # Build a single-row feature dict and encode it
     record = [{
         "hour":        hour,
         "day_of_week": day_of_week,
@@ -248,7 +265,6 @@ def predict_congestion(
     }]
     X = encode_features(record)
 
-    # Predict class and confidence (highest class probability)
     prediction_idx   = clf.predict(X)[0]
     probabilities    = clf.predict_proba(X)[0]
     confidence       = round(float(probabilities.max()), 4)

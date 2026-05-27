@@ -8,7 +8,7 @@ from openai import OpenAI
 from app.retriever import (
     extract_day,
     extract_hour,
-    extract_location,
+    extract_location_with_llm,
     get_nearby_incidents,
     get_traffic_prediction,
 )
@@ -42,7 +42,7 @@ async def generate_answer(
     longitude: float,
     token: str,
 ) -> dict:
-    # Step 1 — Handle greetings instantly, no LLM or service calls needed
+    # Step 1 — Handle greetings instantly
     if question.strip().lower().rstrip("!.,?") in GREETINGS:
         return {
             "answer": "Hello! I'm UrbanFlow AI, your traffic assistant for Yaoundé. Ask me about traffic, incidents, or road conditions anywhere in the city!",
@@ -51,9 +51,9 @@ async def generate_answer(
         }
 
     # Step 2 — Extract context clues from question
-    location: Optional[str] = extract_location(question)
+    location: Optional[str] = await extract_location_with_llm(question)
     hour: int = extract_hour(question)
-    day: str = extract_day(question)
+    day: str  = extract_day(question)
 
     # Step 3 — Always fetch nearby incidents by coordinates
     incidents = await get_nearby_incidents(latitude, longitude, token)
@@ -103,7 +103,7 @@ Your answer:
         logger.error("Z.ai API call failed: %s", exc)
         traceback.print_exc()
 
-    # Step 8 — Return result dict
+    # Step 8 — Return result
     return {
         "answer": answer,
         "location_detected": location,
