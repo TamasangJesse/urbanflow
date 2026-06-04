@@ -11,6 +11,7 @@ from app.retriever import (
     extract_location_with_llm,
     get_nearby_incidents,
     get_traffic_prediction,
+     get_coordinates, #added just now
 )
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ FALLBACK_ANSWER = (
     "I am unable to process your question at this moment. Please try again shortly."
 )
 
-GREETINGS = {"hi", "hello", "hey", "good morning", "good afternoon", "good evening", "bonjour", "salut"}
+
 
 
 def format_incidents(incidents: list) -> str:
@@ -42,49 +43,29 @@ async def generate_answer(
     longitude: float,
     token: str,
 ) -> dict:
-    # Step 1 — Handle greetings instantly
-    if question.strip().lower().rstrip("!.,?") in GREETINGS:
-        return {
-            "answer": "Hello! I'm UrbanFlow AI, your traffic assistant for Yaoundé. Ask me about traffic, incidents, or road conditions anywhere in the city!",
-            "location_detected": None,
-            "context_used": {"incidents": [], "prediction": None},
-        }
 
-    # Step 2 — Extract context clues from question
+    # Step 1 — Extract context clues from question
     location: Optional[str] = await extract_location_with_llm(question)
     hour: int = extract_hour(question)
     day: str  = extract_day(question)
 
-    # Step 3 — Always fetch nearby incidents by coordinates
-    incidents = await get_nearby_incidents(latitude, longitude, token)
+    # Step 2 — Fetch incidents near detected location or user position
+    if location:
+        loc_lat, loc_lng = await get_coordinates(location)
+    else:
+        loc_lat, loc_lng = latitude, longitude
 
-    # Step 4 — Fetch traffic prediction only if location detected
+    incidents = await get_nearby_incidents(loc_lat, loc_lng, token)
+
+    # Step 3 — Fetch traffic prediction only if location detected
     prediction: Optional[str] = None
     if location:
         prediction = await get_traffic_prediction(location, hour, day, token)
 
-    # Step 5 — Format incidents into readable text
+    # Step 4 — Format incidents
     formatted_incidents = format_incidents(incidents)
 
-    # Step 6 — Build prompt
-    prompt = f"""
-You are UrbanFlow AI, a traffic assistant for Yaoundé, Cameroon. You help drivers make smart decisions about their routes and travel timing.
-
-Answer the user's question using ONLY the real-time data provided below. Do not invent information. If the data shows no incidents, say the area appears clear based on current reports. Be concise (maximum 3 sentences), specific to Yaoundé, and helpful.
-
-CURRENT TRAFFIC DATA:
-Nearby incidents ({latitude}, {longitude}):
-{formatted_incidents}
-
-Traffic prediction for {location or 'the requested area'}:
-{prediction or 'Prediction unavailable for this location.'}
-
-User question: {question}
-
-Your answer:
-"""
-
-    # Step 7 — Call Z.ai API
+    # Step 5 — Call LLM with system + user message split
     answer = FALLBACK_ANSWER
     try:
         client = OpenAI(
@@ -93,17 +74,37 @@ Your answer:
         )
         response = client.chat.completions.create(
             model="glm-4.7-flashx",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are UrbanFlow AI, a friendly and helpful traffic assistant for Yaoundé, Cameroon. "
+                        "You help drivers make smart decisions about routes and travel timing. "
+                        "If the user greets you or makes small talk, respond warmly and naturally and invite them to ask about traffic. "
+                        "If the user asks about traffic or incidents, use ONLY the real-time data provided — never invent information. "
+                        "Be concise (maximum 3 sentences), friendly, and helpful. "
+                        "You understand both English and French — respond in the same language the user wrote in."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"CURRENT TRAFFIC DATA:\n"
+                        f"Nearby incidents:\n{formatted_incidents}\n\n"
+                        f"Traffic prediction for {location or 'the requested area'}: "
+                        f"{prediction or 'Prediction unavailable.'}\n\n"
+                        f"User question: {question}"
+                    )
+                }
+            ],
             max_tokens=1500,
         )
-        logger.info("Z.ai raw response: %s", response)
         message = response.choices[0].message
         answer = message.content or getattr(message, "reasoning_content", None) or FALLBACK_ANSWER
     except Exception as exc:
         logger.error("Z.ai API call failed: %s", exc)
         traceback.print_exc()
 
-    # Step 8 — Return result
     return {
         "answer": answer,
         "location_detected": location,
