@@ -9,6 +9,9 @@ export const options = {
   ],
 };
 
+
+
+
 export default function () {
   let res = http.get('https://urbanflow.duckdns.org');
   check(res, { 'frontend status 200': (r) => r.status === 200 });
