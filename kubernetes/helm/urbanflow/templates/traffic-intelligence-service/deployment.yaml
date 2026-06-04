@@ -1,0 +1,69 @@
+{{- if .Values.trafficIntelligenceService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-intelligence-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: traffic-intelligence-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.trafficIntelligenceService.replicas }}
+  selector:
+    matchLabels:
+      app: traffic-intelligence-service
+  template:
+    metadata:
+      labels:
+        app: traffic-intelligence-service
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: traffic-intelligence-service
+          image: "{{ .Values.trafficIntelligenceService.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.trafficIntelligenceService.port }}
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: REDIS_PASSWORD
+            # Fixed: was hardcoded in compose — now uses secrets properly
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:{{ .Values.postgres.port }}/urbanflow_traffic"
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:{{ .Values.redis.port }}/0"
+            - name: MODEL_PATH
+              value: "/app/ml_model/model.pkl"
+          resources:
+            requests:
+              cpu: {{ .Values.trafficIntelligenceService.resources.requests.cpu }}
+              memory: {{ .Values.trafficIntelligenceService.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.trafficIntelligenceService.resources.limits.cpu }}
+              memory: {{ .Values.trafficIntelligenceService.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.trafficIntelligenceService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.trafficIntelligenceService.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+{{- end }}

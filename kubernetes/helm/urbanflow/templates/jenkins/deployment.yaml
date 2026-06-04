@@ -1,0 +1,88 @@
+{{- if .Values.jenkins.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: jenkins
+    app.kubernetes.io/name: urbanflow
+    app.kubernetes.io/component: ci-cd
+spec:
+  replicas: {{ .Values.jenkins.replicas }}
+  selector:
+    matchLabels:
+      app: jenkins
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: jenkins
+        app.kubernetes.io/name: urbanflow
+    spec:
+      # Matches compose: user: root + privileged: true
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: jenkins
+          image: "{{ .Values.jenkins.image }}:{{ .Values.jenkins.imageTag }}"
+          imagePullPolicy: {{ .Values.jenkins.imagePullPolicy }}
+          securityContext:
+            privileged: true   # needed to access docker socket
+          ports:
+            - name: http
+              containerPort: {{ .Values.jenkins.port }}
+            - name: agent
+              containerPort: {{ .Values.jenkins.agentPort }}
+          env:
+            - name: JAVA_OPTS
+              value: "-Djenkins.install.runSetupWizard=true"
+          volumeMounts:
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+            # Matches compose volumes exactly
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: docker-bin
+              mountPath: /usr/bin/docker
+            - name: docker-plugins
+              mountPath: /usr/libexec/docker/cli-plugins
+          resources:
+            requests:
+              cpu: {{ .Values.jenkins.resources.requests.cpu }}
+              memory: {{ .Values.jenkins.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.jenkins.resources.limits.cpu }}
+              memory: {{ .Values.jenkins.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.jenkins.port }}
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: {{ .Values.jenkins.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 15
+      volumes:
+        - name: jenkins-home
+          persistentVolumeClaim:
+            claimName: jenkins-pvc
+        # Host path mounts — matches compose bind mounts exactly
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: docker-bin
+          hostPath:
+            path: /usr/bin/docker
+            type: File
+        - name: docker-plugins
+          hostPath:
+            path: /usr/libexec/docker/cli-plugins
+            type: DirectoryOrCreate
+{{- end }}

@@ -1,0 +1,24 @@
+{{- if and .Values.trafficIntelligenceService.enabled .Values.trafficIntelligenceService.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: traffic-intelligence-service-hpa
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: traffic-intelligence-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: traffic-intelligence-service
+  minReplicas: {{ .Values.trafficIntelligenceService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.trafficIntelligenceService.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.trafficIntelligenceService.hpa.cpuUtilization }}
+{{- end }}

@@ -1,0 +1,287 @@
+# ============================================================
+#  UrbanFlow — Root docker-compose.yml
+#  Run from the urbanflow/ root folder:
+#    docker compose up --build
+#
+#  Databases (one instance each, shared across all services):
+#    PostgreSQL  → User Service + Traffic Intelligence Service
+#    MongoDB     → Incident Report Service
+#    Redis       → Notification Service + API Gateway (blacklist)
+#                  + Event broker (incident_stream)
+# ============================================================
+
+services:
+
+  # ── DATABASES ──────────────────────────────────────────────
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: urbanflow_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"          # exposed so you can inspect with DBeaver/TablePlus
+    networks:
+      - urbanflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: urbanflow_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"        # exposed so you can inspect with MongoDB Compass
+    networks:
+      - urbanflow_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: urbanflow_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"          # exposed so you can inspect with RedisInsight
+    networks:
+      - urbanflow_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── SERVICES ───────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_user_service
+    restart: unless-stopped
+    env_file:
+      - ./services/user-service/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/user_db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+    ports:
+      - "8001:8001"
+    networks:
+      - urbanflow_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  incident-report-service:
+    build:
+      context: ./services/incident-report-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_incident_service
+    restart: unless-stopped
+    env_file:
+      - ./services/incident-report-service/.env
+    environment:
+      MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
+      MONGO_DB: ${MONGO_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+    ports:
+      - "8004:8004"
+    networks:
+      - urbanflow_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  traffic-intelligence-service:
+    build:
+      context: ./services/traffic-intelligence-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_traffic_service
+    restart: unless-stopped
+    env_file:
+      - ./services/traffic-intelligence-service/.env
+    environment:
+      DATABASE_URL: postgresql://urbanflow:urbanflow_pg_pass_2026@postgres:5432/urbanflow_traffic
+      MODEL_PATH: /app/ml_model/model.pkl
+      REDIS_URL: redis://:urbanflow_redis_pass_2026@urbanflow_redis:6379/0
+    ports:
+      - "8002:8002"
+    networks:
+      - urbanflow_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_notification_service
+    restart: unless-stopped
+    env_file:
+      - ./services/notification-service/.env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+    ports:
+      - "8003:8003"
+    networks:
+      - urbanflow_network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: urbanflow_api_gateway
+    restart: unless-stopped
+    env_file:
+      - ./services/api-gateway/.env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SECRET_KEY: ${SECRET_KEY}
+      USER_SERVICE_URL: http://user-service:8001
+      INCIDENT_SERVICE_URL: http://incident-report-service:8004
+      TRAFFIC_SERVICE_URL: http://traffic-intelligence-service:8002
+      NOTIFICATION_SERVICE_URL: http://notification-service:8003
+      RAG_SERVICE_URL:  http://rag-service:8005
+    ports:
+      - "8000:8000"
+    networks:
+      - urbanflow_network
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      incident-report-service:
+        condition: service_started
+      traffic-intelligence-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+  rag-service:
+    build:
+      context: ./services/rag-service
+      dockerfile: Dockerfile
+    container_name: urbanflow_rag_service
+    restart: unless-stopped
+    env_file:
+      - ./services/rag-service/.env
+    environment:
+      MONGODB_URL: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/urbanflow_rag?authSource=admin
+      SECRET_KEY: ${SECRET_KEY}
+      INCIDENT_SERVICE_URL: http://incident-report-service:8004
+      TRAFFIC_SERVICE_URL: http://traffic-intelligence-service:8002
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8005:8005"
+    networks:
+      - urbanflow_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      incident-report-service:
+        condition: service_started
+      traffic-intelligence-service:
+        condition: service_started
+
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}
+        VITE_API_BASE_URL: https://urbanflow.duckdns.org/api
+    container_name: urbanflow_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - urbanflow_network
+    depends_on:
+      - api-gateway
+
+
+
+
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: urbanflow_jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root                          # needed to access docker socket
+    ports:
+      - "8080:8080"                     # Jenkins web UI
+      - "50000:50000"                   # Jenkins agent communication port
+    volumes:
+      - jenkins_data:/var/jenkins_home  # persists all Jenkins config/jobs
+      - /var/run/docker.sock:/var/run/docker.sock   # lets Jenkins run docker commands
+      - /usr/bin/docker:/usr/bin/docker             # docker binary itself
+      - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins 
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
+    networks:
+      - urbanflow_network
+
+
+# ── VOLUMES ────────────────────────────────────────────────
+# Named volumes persist data across container restarts.
+# Deleting a volume wipes that database permanently.
+
+volumes:
+  postgres_data:
+    name: urbanflow_postgres_data
+  mongo_data:
+    name: urbanflow_mongo_data
+  redis_data:
+    name: urbanflow_redis_data
+  jenkins_data:
+    name: urbanflow_jenkins_data 
+
+# ── NETWORK ────────────────────────────────────────────────
+# One shared bridge network. All containers resolve each
+# other by service name (e.g. "postgres", "redis", "user-service").
+
+networks:
+  urbanflow_network:
+    name: urbanflow_network
+    driver: bridge
+
+
+
+
+

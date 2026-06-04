@@ -1,0 +1,79 @@
+{{- if .Values.incidentReportService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-report-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: incident-report-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.incidentReportService.replicas }}
+  selector:
+    matchLabels:
+      app: incident-report-service
+  template:
+    metadata:
+      labels:
+        app: incident-report-service
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: incident-report-service
+          image: "{{ .Values.incidentReportService.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.incidentReportService.port }}
+          env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: MONGO_USER
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: MONGO_PASSWORD
+            - name: MONGO_DB
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: MONGO_DB
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: REDIS_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: SECRET_KEY
+            # MONGO_URI constructed from secrets — matches compose exactly
+            - name: MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:{{ .Values.mongodb.port }}/$(MONGO_DB)?authSource=admin"
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "{{ .Values.redis.port }}"
+          resources:
+            requests:
+              cpu: {{ .Values.incidentReportService.resources.requests.cpu }}
+              memory: {{ .Values.incidentReportService.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.incidentReportService.resources.limits.cpu }}
+              memory: {{ .Values.incidentReportService.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.incidentReportService.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.incidentReportService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+{{- end }}

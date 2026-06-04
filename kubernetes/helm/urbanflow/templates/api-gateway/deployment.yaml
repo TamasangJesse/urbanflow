@@ -1,0 +1,84 @@
+{{- if .Values.apiGateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: api-gateway
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.apiGateway.replicas }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.apiGateway.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.apiGateway.port }}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: REDIS_PASSWORD
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:{{ .Values.redis.port }}"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: SECRET_KEY
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: USER_SERVICE_URL
+            - name: INCIDENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: INCIDENT_SERVICE_URL
+            - name: TRAFFIC_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: TRAFFIC_SERVICE_URL
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: NOTIFICATION_SERVICE_URL
+            - name: RAG_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: RAG_SERVICE_URL
+          resources:
+            requests:
+              cpu: {{ .Values.apiGateway.resources.requests.cpu }}
+              memory: {{ .Values.apiGateway.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.apiGateway.resources.limits.cpu }}
+              memory: {{ .Values.apiGateway.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+{{- end }}

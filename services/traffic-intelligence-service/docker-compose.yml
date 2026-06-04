@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml
+# Traffic Intelligence Service — UrbanFlow
+# ─────────────────────────────────────────────────────────────────────────────
+# Two containers:
+#   db       — PostgreSQL 15
+#   traffic  — FastAPI Traffic Intelligence Service on port 8002
+#
+# Both are on the same Docker network (traffic_network) so they can
+# reach each other by service name. The FastAPI service connects to
+# PostgreSQL using host=db — matching the service name below exactly.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: traffic_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Persist database data between container restarts
+      - traffic_db_data:/var/lib/postgresql/data
+    networks:
+      - traffic_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Service ──────────────────────────────────────────────────────────
+  traffic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traffic_service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      MODEL_PATH:   ${MODEL_PATH}
+    volumes:
+      # Persist model.pkl between container restarts so the service does not
+      # retrain from scratch every time the container is restarted
+      - traffic_ml_model:/app/ml_model
+    networks:
+      - traffic_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Named volumes — data survives container restarts and rebuilds
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  traffic_db_data:
+  traffic_ml_model:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Internal network — db and traffic talk to each other here
+# Not exposed outside the host
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  traffic_network:
+    driver: bridge
+    

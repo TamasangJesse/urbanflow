@@ -1,0 +1,18 @@
+{{- if .Values.userService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: user-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - name: http
+      port: {{ .Values.userService.port }}
+      targetPort: {{ .Values.userService.port }}
+{{- end }}

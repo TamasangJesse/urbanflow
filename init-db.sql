@@ -1,0 +1,9 @@
+CREATE DATABASE user_db;
+CREATE DATABASE traffic_db;
+GRANT ALL PRIVILEGES ON DATABASE user_db TO urbanflow;
+GRANT ALL PRIVILEGES ON DATABASE traffic_db TO urbanflow;
+
+
+
+GRANT ALL PRIVILEGES ON DATABASE user_db TO urbanflow;
+GRANT ALL PRIVILEGES ON DATABASE traffic_db TO urbanflow;

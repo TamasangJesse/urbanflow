@@ -1,0 +1,17 @@
+{{- if .Values.jenkins.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-pvc
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: jenkins
+    app.kubernetes.io/name: urbanflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.jenkins.storage.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.jenkins.storage.size }}
+{{- end }}

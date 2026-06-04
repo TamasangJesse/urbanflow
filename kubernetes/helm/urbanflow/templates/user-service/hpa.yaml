@@ -1,0 +1,24 @@
+{{- if and .Values.userService.enabled .Values.userService.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-service-hpa
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: user-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: user-service
+  minReplicas: {{ .Values.userService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.userService.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.userService.hpa.cpuUtilization }}
+{{- end }}

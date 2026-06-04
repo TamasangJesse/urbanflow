@@ -1,0 +1,283 @@
+# ============================================================
+# UrbanFlow Helm Chart — values.yaml
+# Target  : k3s on bare-metal VPS
+# Images  : built locally, imported into k3s containerd
+# Registry: none — imagePullPolicy: Never for app images
+# ============================================================
+
+global:
+  namespace: urbanflow
+  imageTag: latest
+  imagePullPolicy: Never        # App images are built locally on the VPS
+  domain: urbanflow.duckdns.org # Your actual domain
+
+# ============================================================
+# SECRETS
+# To encode any value: echo -n "yourvalue" | base64
+# ============================================================
+secrets:
+  # PostgreSQL — matches POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+  postgresUser: dXJiYW5mbG93                           # urbanflow
+  postgresPassword: dXJiYW5mbG93X3BnX3Bhc3NfMjAyNg==  # urbanflow_pg_pass_2026
+  postgresDb: dXJiYW5mbG93X2Ri                         # urbanflow_db
+
+  # MongoDB — matches MONGO_USER, MONGO_PASSWORD, MONGO_DB
+  mongoUser: dXJiYW5mbG93                                  # urbanflow
+  mongoPassword: dXJiYW5mbG93X21vbmdvX3Bhc3NfMjAyNg==     # urbanflow_mongo_pass_2026
+  mongoDb: dXJiYW5mbG93X2luY2lkZW50cw==                   # urbanflow_incidents
+
+  # Redis — matches REDIS_PASSWORD
+  redisPassword: dXJiYW5mbG93X3JlZGlzX3Bhc3NfMjAyNg==    # urbanflow_redis_pass_2026
+
+  # App secret — matches SECRET_KEY
+  secretKey: c3VwZXJzZWNyZXRrZXlfY2hhbmdldGhpc2xhdGVy    # supersecretkey_changethislater
+
+  # External API keys — replace with real base64-encoded values
+  # echo -n "your-actual-gemini-key" | base64
+  zaiApiKey: ZjcyNjVhZTIyZDlkNDAxNjg2OGRlN2YwM2JjOGFlYzAuaXBPT3ByZTZJdWtmWG5Bbw==
+  # echo -n "your-actual-maps-key" | base64
+  viteMapsApiKey: UkVQTEFDRV9XSVRIX1JFQUxfTUFQU19LRVk=
+
+# ============================================================
+# FRONTEND
+# ============================================================
+frontend:
+  enabled: true
+  image: urbanflow-frontend
+  replicas: 2
+  port: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    cpuUtilization: 70
+
+# ============================================================
+# API GATEWAY
+# ============================================================
+apiGateway:
+  enabled: true
+  image: urbanflow-api-gateway
+  replicas: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "256Mi"
+    limits:
+      cpu: "750m"
+      memory: "768Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    cpuUtilization: 70
+
+# ============================================================
+# USER SERVICE
+# ============================================================
+userService:
+  enabled: true
+  image: urbanflow-user-service
+  replicas: 2
+  port: 8001
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    cpuUtilization: 75
+
+# ============================================================
+# INCIDENT REPORT SERVICE
+# ============================================================
+incidentReportService:
+  enabled: true
+  image: urbanflow-incident-report-service
+  replicas: 2
+  port: 8004
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    cpuUtilization: 75
+
+# ============================================================
+# NOTIFICATION SERVICE
+# ============================================================
+notificationService:
+  enabled: true
+  image: urbanflow-notification-service
+  replicas: 2
+  port: 8003
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "400m"
+      memory: "384Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    cpuUtilization: 75
+
+# ============================================================
+# TRAFFIC INTELLIGENCE SERVICE
+# ============================================================
+trafficIntelligenceService:
+  enabled: true
+  image: urbanflow-traffic-intelligence-service
+  replicas: 2
+  port: 8002
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    cpuUtilization: 70
+
+# ============================================================
+# RAG SERVICE
+# ============================================================
+ragService:
+  enabled: true
+  image: urbanflow-rag-service
+  replicas: 1
+  port: 8005
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1500m"
+      memory: "2Gi"
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    cpuUtilization: 65
+
+# ============================================================
+# MONGODB (StatefulSet)
+# ============================================================
+mongodb:
+  enabled: true
+  image: mongo
+  imageTag: "7-jammy"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 27017
+  storage:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+# ============================================================
+# POSTGRES (StatefulSet)
+# ============================================================
+postgres:
+  enabled: true
+  image: postgres
+  imageTag: "15-alpine"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 5432
+  storage:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+# ============================================================
+# REDIS
+# ============================================================
+redis:
+  enabled: true
+  image: redis
+  imageTag: "7-alpine"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 6379
+  storage:
+    size: 2Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# ============================================================
+# JENKINS
+# ============================================================
+jenkins:
+  enabled: true
+  image: jenkins/jenkins
+  imageTag: "lts"
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 8080
+  agentPort: 50000
+  storage:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+
+# ============================================================
+# INGRESS (Traefik — k3s default)
+# ============================================================
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  tls: true
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: urbanflow-strip-api-prefix@kubernetescrd

@@ -1,0 +1,100 @@
+"""
+test_proxy.py — Unit tests for app/core/proxy.py
+
+Tests the routing table logic in isolation — no HTTP requests made.
+Verifies that every path prefix resolves to the correct downstream service.
+
+Scenarios covered:
+  - Every registered service prefix resolves correctly
+  - Subpaths under each prefix resolve to the same service
+  - Unknown paths return None (gateway will respond with 404)
+  - Longest prefix wins when prefixes could overlap
+"""
+
+import pytest
+from app.core.proxy import resolve_service_url
+from app.config import settings
+
+
+# =============================================================================
+# Tests
+# =============================================================================
+
+class TestRouteResolution:
+
+    def test_auth_routes_to_user_service(self):
+        assert resolve_service_url("/auth") == settings.USER_SERVICE_URL
+
+    def test_auth_register_routes_to_user_service(self):
+        assert resolve_service_url("/auth/register") == settings.USER_SERVICE_URL
+
+    def test_auth_login_routes_to_user_service(self):
+        assert resolve_service_url("/auth/login") == settings.USER_SERVICE_URL
+
+    def test_users_routes_to_user_service(self):
+        assert resolve_service_url("/users") == settings.USER_SERVICE_URL
+
+    def test_users_with_id_routes_to_user_service(self):
+        assert resolve_service_url("/users/42") == settings.USER_SERVICE_URL
+
+    def test_users_nested_path_routes_to_user_service(self):
+        assert resolve_service_url("/users/42/routes") == settings.USER_SERVICE_URL
+
+    def test_traffic_data_routes_to_traffic_service(self):
+        assert resolve_service_url("/traffic-data") == settings.TRAFFIC_SERVICE_URL
+
+    def test_predict_routes_to_traffic_service(self):
+        assert resolve_service_url("/predict") == settings.TRAFFIC_SERVICE_URL
+
+    def test_predict_subpath_routes_to_traffic_service(self):
+        assert resolve_service_url("/predict/route") == settings.TRAFFIC_SERVICE_URL
+
+    def test_model_routes_to_traffic_service(self):
+        assert resolve_service_url("/model") == settings.TRAFFIC_SERVICE_URL
+
+    def test_model_retrain_routes_to_traffic_service(self):
+        assert resolve_service_url("/model/retrain") == settings.TRAFFIC_SERVICE_URL
+
+    def test_incidents_routes_to_incident_service(self):
+        assert resolve_service_url("/incidents") == settings.INCIDENT_SERVICE_URL
+
+    def test_incidents_subpath_routes_to_incident_service(self):
+        assert resolve_service_url("/incidents/near") == settings.INCIDENT_SERVICE_URL
+
+    def test_notifications_routes_to_notification_service(self):
+        assert resolve_service_url("/notifications") == settings.NOTIFICATION_SERVICE_URL
+
+    def test_notifications_with_id_routes_to_notification_service(self):
+        assert resolve_service_url("/notifications/99") == settings.NOTIFICATION_SERVICE_URL
+
+    def test_unknown_path_returns_none(self):
+        assert resolve_service_url("/unknown-path") is None
+
+    def test_empty_path_returns_none(self):
+        assert resolve_service_url("/") is None
+
+    def test_random_path_returns_none(self):
+        assert resolve_service_url("/some/completely/random/path") is None
+
+
+class TestLongestPrefixWins:
+    """
+    The routing table sorts prefixes longest-first so more specific
+    routes always win over shorter ones.
+    """
+
+    def test_notifications_not_confused_with_shorter_prefix(self):
+        """
+        /notifications should always hit notification service,
+        never accidentally match a shorter prefix.
+        """
+        result = resolve_service_url("/notifications/123")
+        assert result == settings.NOTIFICATION_SERVICE_URL
+
+    def test_traffic_data_not_confused_with_traffic(self):
+        """
+        /traffic-data is a distinct prefix from any hypothetical /traffic.
+        It must always resolve to the traffic service.
+        """
+        result = resolve_service_url("/traffic-data/live")
+        assert result == settings.TRAFFIC_SERVICE_URL

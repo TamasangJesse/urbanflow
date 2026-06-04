@@ -1,0 +1,59 @@
+{{- if .Values.notificationService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: notification-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.notificationService.replicas }}
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: notification-service
+          image: "{{ .Values.notificationService.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.notificationService.port }}
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: REDIS_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: SECRET_KEY
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:{{ .Values.redis.port }}"
+          resources:
+            requests:
+              cpu: {{ .Values.notificationService.resources.requests.cpu }}
+              memory: {{ .Values.notificationService.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.notificationService.resources.limits.cpu }}
+              memory: {{ .Values.notificationService.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notificationService.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notificationService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+{{- end }}

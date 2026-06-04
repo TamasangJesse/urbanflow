@@ -1,0 +1,80 @@
+{{- if .Values.ragService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: rag-service
+    app.kubernetes.io/name: urbanflow
+spec:
+  replicas: {{ .Values.ragService.replicas }}
+  selector:
+    matchLabels:
+      app: rag-service
+  template:
+    metadata:
+      labels:
+        app: rag-service
+        app.kubernetes.io/name: urbanflow
+    spec:
+      containers:
+        - name: rag-service
+          image: "{{ .Values.ragService.image }}:{{ .Values.global.imageTag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.ragService.port }}
+          env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: MONGO_USER
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: MONGO_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: SECRET_KEY
+            - name: ZAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: urbanflow-secrets
+                  key: ZAI_API_KEY
+            # MONGODB_URL matches compose exactly
+            - name: MONGODB_URL
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:{{ .Values.mongodb.port }}/urbanflow_rag?authSource=admin"
+            - name: INCIDENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: INCIDENT_SERVICE_URL
+            - name: TRAFFIC_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: urbanflow-config
+                  key: TRAFFIC_SERVICE_URL
+          resources:
+            requests:
+              cpu: {{ .Values.ragService.resources.requests.cpu }}
+              memory: {{ .Values.ragService.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.ragService.resources.limits.cpu }}
+              memory: {{ .Values.ragService.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.ragService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.ragService.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+{{- end }}
