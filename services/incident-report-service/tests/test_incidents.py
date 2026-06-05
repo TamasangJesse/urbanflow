@@ -12,6 +12,8 @@ from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, MagicMock, patch
 import sys
 import os
+import builtins
+builtins.pytest = pytest
 
 # Make sure Python can find the app modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
