@@ -399,4 +399,100 @@ async def test_save_route_missing_fields(client):
     )
     assert response.status_code == 422
 
+async def test_save_route_appears_in_list(client):
+    register = await client.post("/auth/register", json={
+        "email": "test@gmail.com",
+        "password": "password123",
+        "full_name": "Test User"
+    })
+    token = register.json()["access_token"]
+    user_id = register.json()["user_id"]
+    await client.post(
+        f"/users/{user_id}/routes",
+        json={"origin": "Home", "destination": "Work"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    response = await client.get(f"/users/{user_id}/routes", headers={"Authorization": f"Bearer {token}"})
+    assert len(response.json()["routes"]) == 1
 
+
+# ─── DELETE /users/{user_id}/routes/{route_id} ──────────────────
+
+async def test_delete_route_success(client):
+    register = await client.post("/auth/register", json={
+        "email": "test@gmail.com",
+        "password": "password123",
+        "full_name": "Test User"
+    })
+    token = register.json()["access_token"]
+    user_id = register.json()["user_id"]
+    create = await client.post(
+        f"/users/{user_id}/routes",
+        json={"origin": "Home", "destination": "Work"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    route_id = create.json()["id"]
+    response = await client.delete(f"/users/{user_id}/routes/{route_id}", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 204
+
+
+async def test_delete_route_not_found(client):
+    register = await client.post("/auth/register", json={
+        "email": "test@gmail.com",
+        "password": "password123",
+        "full_name": "Test User"
+    })
+    token = register.json()["access_token"]
+    user_id = register.json()["user_id"]
+    response = await client.delete(
+        f"/users/{user_id}/routes/00000000-0000-0000-0000-000000000000",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 404
+
+
+async def test_delete_route_forbidden(client):
+    r1 = await client.post("/auth/register", json={
+        "email": "a@gmail.com",
+        "password": "password123",
+        "full_name": "User A"
+    })
+    r2 = await client.post("/auth/register", json={
+        "email": "b@gmail.com",
+        "password": "password123",
+        "full_name": "User B"
+    })
+    token_a = r1.json()["access_token"]
+    user_id_a = r1.json()["user_id"]
+    token_b = r2.json()["access_token"]
+    user_id_b = r2.json()["user_id"]
+    create = await client.post(
+        f"/users/{user_id_a}/routes",
+        json={"origin": "Home", "destination": "Work"},
+        headers={"Authorization": f"Bearer {token_a}"}
+    )
+    route_id = create.json()["id"]
+    response = await client.delete(
+        f"/users/{user_id_a}/routes/{route_id}",
+        headers={"Authorization": f"Bearer {token_b}"}
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_route_removed_from_list(client):
+    register = await client.post("/auth/register", json={
+        "email": "test@gmail.com",
+        "password": "password123",
+        "full_name": "Test User"
+    })
+    token = register.json()["access_token"]
+    user_id = register.json()["user_id"]
+    create = await client.post(
+        f"/users/{user_id}/routes",
+        json={"origin": "Home", "destination": "Work"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    route_id = create.json()["id"]
+    await client.delete(f"/users/{user_id}/routes/{route_id}", headers={"Authorization": f"Bearer {token}"})
+    routes = await client.get(f"/users/{user_id}/routes", headers={"Authorization": f"Bearer {token}"})
+    assert route_id not in [r["id"] for r in routes.json()["routes"]]
