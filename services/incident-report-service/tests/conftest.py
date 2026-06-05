@@ -1,8 +1,8 @@
 import sys
 import os
 
-# Tell Python where to find the app modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
+# Point Python to the app/ folder where main.py lives
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 # Override environment variables for testing.
 # During tests, Docker is not running so ${MONGO_USER} and
