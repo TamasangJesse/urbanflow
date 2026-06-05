@@ -222,7 +222,10 @@ pipeline {
                         -t urbanflow-frontend:latest ./frontend
                     docker save urbanflow-frontend:latest | /usr/local/bin/k3s ctr images import -
 
-                    KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl rollout restart deployment -n urbanflow
+                    KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl \
+                      --server=https://194.163.153.164:6443 \
+                      --insecure-skip-tls-verify \
+                       rollout restart deployment -n urbanflow
                 '''
             }
         }
