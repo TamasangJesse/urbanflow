@@ -222,3 +222,28 @@ async def test_get_incidents_near_empty_result(mock_find, client):
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 0
+
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_get_incidents_near_custom_radius(mock_find, client):
+    """
+    GET /incidents/near
+    Should respect custom radius and return correct count.
+    Restored with explicit assertion on incident types returned.
+    """
+    mock_find.return_value = [
+        {"_id": "xyz789", "type": "flooding", "is_active": True},
+        {"_id": "xyz790", "type": "accident", "is_active": True}
+    ]
+
+    response = await client.get(
+        "/incidents/near?lat=3.8690&lng=11.5180&radius=10000"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    types = [i["type"] for i in data["incidents"]]
+    assert "flooding" in types
+    assert "accident" in types
