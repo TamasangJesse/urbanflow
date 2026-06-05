@@ -113,3 +113,8 @@ async def test_blacklist_key_format():
 
     # Confirm Redis was queried with the exact expected key format
     redis.exists.assert_called_once_with(f"blacklist:{token}")
+
+
+
+
+    trying to cause an error intentionally
