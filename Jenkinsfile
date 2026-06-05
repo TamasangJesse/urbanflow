@@ -62,6 +62,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/user-service/tests/results.xml'
                             recordCoverage(
+                                id: 'user-service',
+                                name: 'User Service Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/user-service/tests/coverage.xml']]
                             )
@@ -86,6 +88,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/results.xml'
                             recordCoverage(
+                                id: 'incident-service',
+                                name: 'Incident Service Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/incident-report-service/tests/coverage.xml']]
                             )
@@ -110,6 +114,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/notification-service/tests/results.xml'
                             recordCoverage(
+                                id: 'notification-service',
+                                name: 'Notification Service Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/notification-service/tests/coverage.xml']]
                             )
@@ -134,6 +140,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/results.xml'
                             recordCoverage(
+                                id: 'traffic-service',
+                                name: 'Traffic Intelligence Service Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/traffic-intelligence-service/tests/coverage.xml']]
                             )
@@ -158,6 +166,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
                             recordCoverage(
+                                id: 'api-gateway',
+                                name: 'API Gateway Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/api-gateway/tests/coverage.xml']]
                             )
@@ -182,6 +192,8 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/rag-service/tests/results.xml'
                             recordCoverage(
+                                id: 'rag-service',
+                                name: 'RAG Service Coverage',
                                 sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/rag-service/tests/coverage.xml']]
                             )
