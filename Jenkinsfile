@@ -13,7 +13,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo 'Pulling latest code from GitHub...'
@@ -46,7 +45,6 @@ pipeline {
 
         stage('Test') {
             parallel {
-
                 stage('Test: user-service') {
                     steps {
                         sh '''
@@ -64,6 +62,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/user-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/user-service/tests/coverage.xml']]
                             )
                         }
@@ -87,6 +86,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/incident-report-service/tests/coverage.xml']]
                             )
                         }
@@ -110,6 +110,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/notification-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/notification-service/tests/coverage.xml']]
                             )
                         }
@@ -133,6 +134,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/traffic-intelligence-service/tests/coverage.xml']]
                             )
                         }
@@ -156,6 +158,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/api-gateway/tests/coverage.xml']]
                             )
                         }
@@ -179,12 +182,12 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/rag-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/rag-service/tests/coverage.xml']]
                             )
                         }
                     }
                 }
-
             }
         }
 
@@ -225,7 +228,6 @@ pipeline {
                 '''
             }
         }
-
     }
 
     post {
@@ -239,5 +241,4 @@ pipeline {
             echo 'Pipeline failed - check test results'
         }
     }
-
 }
