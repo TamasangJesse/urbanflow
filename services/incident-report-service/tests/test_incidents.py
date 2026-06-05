@@ -350,3 +350,161 @@ async def test_check_route_clean(mock_qry, client):
     data = response.json()
     assert data["incident_detected"] is False
     assert data["incident"] is None
+
+
+
+
+# ════════════════════════════════════════════════════════════════
+# REPOSITORY TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_save_incident(mock_collection):
+    """IncidentRepository.save_incident inserts a document and returns its id."""
+    from repository import IncidentRepository
+    mock_result = MagicMock()
+    mock_result.inserted_id = "665f3a2b1c4e2d001a8b4567"
+    mock_collection.insert_one = AsyncMock(return_value=mock_result)
+
+    repo = IncidentRepository()
+    result = await repo.save_incident({
+        "type": "accident",
+        "description": "Test",
+        "latitude": 3.86,
+        "longitude": 11.51,
+        "severity": "high",
+        "reported_by": "user_001"
+    })
+    assert result == "665f3a2b1c4e2d001a8b4567"
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_resolve_incident(mock_collection):
+    """IncidentRepository.resolve_incident returns True when document is updated."""
+    from repository import IncidentRepository
+    mock_result = MagicMock()
+    mock_result.modified_count = 1
+    mock_collection.update_one = AsyncMock(return_value=mock_result)
+
+    repo = IncidentRepository()
+    result = await repo.resolve_incident("665f3a2b1c4e2d001a8b4567")
+    assert result is True
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_resolve_incident_not_found(mock_collection):
+    """IncidentRepository.resolve_incident returns False when nothing is updated."""
+    from repository import IncidentRepository
+    mock_result = MagicMock()
+    mock_result.modified_count = 0
+    mock_collection.update_one = AsyncMock(return_value=mock_result)
+
+    repo = IncidentRepository()
+    result = await repo.resolve_incident("nonexistent")
+    assert result is False
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_delete_incident(mock_collection):
+    """IncidentRepository.delete_incident returns True when document is deleted."""
+    from repository import IncidentRepository
+    mock_result = MagicMock()
+    mock_result.deleted_count = 1
+    mock_collection.delete_one = AsyncMock(return_value=mock_result)
+
+    repo = IncidentRepository()
+    result = await repo.delete_incident("665f3a2b1c4e2d001a8b4567")
+    assert result is True
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_find_by_id_found(mock_collection):
+    """IncidentRepository.find_by_id returns document when found."""
+    from repository import IncidentRepository
+    mock_collection.find_one = AsyncMock(return_value={
+        "_id": "665f3a2b1c4e2d001a8b4567",
+        "type": "accident",
+        "severity": "high"
+    })
+
+    repo = IncidentRepository()
+    result = await repo.find_by_id("665f3a2b1c4e2d001a8b4567")
+    assert result is not None
+    assert result["type"] == "accident"
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_find_by_id_not_found(mock_collection):
+    """IncidentRepository.find_by_id returns None when not found."""
+    from repository import IncidentRepository
+    mock_collection.find_one = AsyncMock(return_value=None)
+
+    repo = IncidentRepository()
+    result = await repo.find_by_id("nonexistent")
+    assert result is None
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_find_by_user(mock_collection):
+    """IncidentRepository.find_by_user returns list of incidents."""
+    from repository import IncidentRepository
+
+    async def mock_async_iter(*args, **kwargs):
+        yield {"_id": "abc", "reported_by": "user_001", "type": "accident"}
+
+    mock_collection.find = MagicMock(return_value=mock_async_iter())
+
+    repo = IncidentRepository()
+    result = await repo.find_by_user("user_001")
+    assert len(result) == 1
+    assert result[0]["reported_by"] == "user_001"
+
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_find_by_area(mock_collection):
+    """IncidentRepository.find_by_area returns matching incidents."""
+    from repository import IncidentRepository
+
+    async def mock_async_iter(*args, **kwargs):
+        yield {"_id": "abc", "description": "accident near Bastos", "type": "accident"}
+
+    mock_collection.find = MagicMock(return_value=mock_async_iter())
+
+    repo = IncidentRepository()
+    result = await repo.find_by_area("Bastos")
+    assert len(result) == 1
+
+
+# ════════════════════════════════════════════════════════════════
+# EVENTS TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("events.redis_client")
+async def test_publish_incident_event(mock_redis):
+    """publish_incident_event sends correct payload to Redis Stream."""
+    from events import publish_incident_event
+    mock_redis.xadd = AsyncMock(return_value=None)
+
+    await publish_incident_event(
+        incident_id="abc123",
+        incident_type="accident",
+        latitude=3.86,
+        longitude=11.51,
+        severity="high",
+        reported_by="user_001"
+    )
+
+    mock_redis.xadd.assert_called_once()
+    call_args = mock_redis.xadd.call_args[0]
+    assert call_args[0] == "incident_stream"
+    assert call_args[1]["incident_id"] == "abc123"
+    assert call_args[1]["severity"] == "high"
