@@ -242,7 +242,7 @@ async def test_get_incidents_by_area(mock_find, client):
 
 
 
-    
+
 
     response = await client.get("/incidents?area=Bastos")
 
@@ -316,12 +316,11 @@ async def test_check_route_incident_detected(mock_qry, client):
     }
 
     payload = {
-        "route_points": [
-            {"latitude": 4.120, "longitude": 12.450},
-            {"latitude": 4.130, "longitude": 12.460}
-        ]
-    }
-
+      "route_points": [
+        [4.120, 12.450],
+        [4.130, 12.460]
+      ]
+     }
     response = await client.post("/incidents/check-route", json=payload)
 
     assert response.status_code == 200
@@ -341,11 +340,10 @@ async def test_check_route_clean(mock_qry, client):
     mock_qry.return_value = None
 
     payload = {
-        "route_points": [
-            {"latitude": 1.0, "longitude": 1.0}
-        ]
+    "route_points": [
+        [1.0, 1.0]
+    ]
     }
-
     response = await client.post("/incidents/check-route", json=payload)
 
     assert response.status_code == 200
