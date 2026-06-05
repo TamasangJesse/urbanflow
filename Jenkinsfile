@@ -13,7 +13,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo 'Pulling latest code from GitHub...'
@@ -46,7 +45,6 @@ pipeline {
 
         stage('Test') {
             parallel {
-
                 stage('Test: user-service') {
                     steps {
                         sh '''
@@ -55,7 +53,6 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/user-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/user-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -65,6 +62,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/user-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/user-service/tests/coverage.xml']]
                             )
                         }
@@ -79,7 +77,6 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/incident-report-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -89,6 +86,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/incident-report-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/incident-report-service/tests/coverage.xml']]
                             )
                         }
@@ -103,7 +101,6 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/notification-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/notification-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -113,6 +110,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/notification-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/notification-service/tests/coverage.xml']]
                             )
                         }
@@ -136,6 +134,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/traffic-intelligence-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/traffic-intelligence-service/tests/coverage.xml']]
                             )
                         }
@@ -150,7 +149,6 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/api-gateway/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/api-gateway/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -160,6 +158,7 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/api-gateway/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/api-gateway/tests/coverage.xml']]
                             )
                         }
@@ -174,7 +173,6 @@ pipeline {
                                 --junitxml=/tmp/results.xml \
                                 --cov=app \
                                 --cov-report=xml:/tmp/coverage.xml || true
-                                
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/rag-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/rag-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
@@ -184,73 +182,63 @@ pipeline {
                         always {
                             junit allowEmptyResults: true, testResults: 'services/rag-service/tests/results.xml'
                             recordCoverage(
+                                sourceCodeRetention: 'NEVER',
                                 tools: [[parser: 'COBERTURA', pattern: 'services/rag-service/tests/coverage.xml']]
                             )
                         }
                     }
                 }
-
             }
         }
-
-        
-
 
         stage('Deploy') {
             when {
                 branch 'main'
-           }
+            }
             steps {
-                 echo 'Deploying UrbanFlow to Kubernetes...'
-                 sh '''
-                 # Build and import each service image into k3s
-                 docker build -t urbanflow-api-gateway:latest ./services/api-gateway
-                 docker save urbanflow-api-gateway:latest | k3s ctr images import -
+                echo 'Deploying UrbanFlow to Kubernetes...'
+                sh '''
+                    export PATH=$PATH:/usr/local/bin
 
-                 docker build -t urbanflow-user-service:latest ./services/user-service
-                 docker save urbanflow-user-service:latest | k3s ctr images import -
+                    docker build -t urbanflow-api-gateway:latest ./services/api-gateway
+                    docker save urbanflow-api-gateway:latest | k3s ctr images import -
 
-                 docker build -t urbanflow-incident-report-service:latest ./services/incident-report-service
-                 docker save urbanflow-incident-report-service:latest | k3s ctr images import -
+                    docker build -t urbanflow-user-service:latest ./services/user-service
+                    docker save urbanflow-user-service:latest | k3s ctr images import -
 
-                 docker build -t urbanflow-notification-service:latest ./services/notification-service
-                 docker save urbanflow-notification-service:latest | k3s ctr images import -
+                    docker build -t urbanflow-incident-report-service:latest ./services/incident-report-service
+                    docker save urbanflow-incident-report-service:latest | k3s ctr images import -
 
-                 docker build -t urbanflow-traffic-intelligence-service:latest ./services/traffic-intelligence-service
-                 docker save urbanflow-traffic-intelligence-service:latest | k3s ctr images import -
+                    docker build -t urbanflow-notification-service:latest ./services/notification-service
+                    docker save urbanflow-notification-service:latest | k3s ctr images import -
 
-                 docker build -t urbanflow-rag-service:latest ./services/rag-service
-                 docker save urbanflow-rag-service:latest | k3s ctr images import -
+                    docker build -t urbanflow-traffic-intelligence-service:latest ./services/traffic-intelligence-service
+                    docker save urbanflow-traffic-intelligence-service:latest | k3s ctr images import -
 
-                 docker build \
-                    --build-arg VITE_API_BASE_URL=https://urbanflow.duckdns.org/api \
-                    --build-arg VITE_GOOGLE_MAPS_API_KEY=$(grep VITE_GOOGLE_MAPS_API_KEY frontend/.env | cut -d= -f2) \
-                    -t urbanflow-frontend:latest ./frontend
+                    docker build -t urbanflow-rag-service:latest ./services/rag-service
+                    docker save urbanflow-rag-service:latest | k3s ctr images import -
+
+                    docker build \
+                        --build-arg VITE_API_BASE_URL=https://urbanflow.duckdns.org/api \
+                        --build-arg VITE_GOOGLE_MAPS_API_KEY=$(grep VITE_GOOGLE_MAPS_API_KEY frontend/.env | cut -d= -f2) \
+                        -t urbanflow-frontend:latest ./frontend
                     docker save urbanflow-frontend:latest | k3s ctr images import -
 
-                   # Rolling restart all deployments
-                     KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl rollout restart deployment -n urbanflow
-              '''
-     }
-       }
-
+                    KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl rollout restart deployment -n urbanflow
+                '''
+            }
+        }
     }
-
-    
-
-
-
 
     post {
         always {
             echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
-    }
+        }
         success {
             echo 'UrbanFlow deployed successfully to Kubernetes'
-    }
+        }
         failure {
             echo 'Pipeline failed - check test results'
+        }
     }
-}
-
 }
