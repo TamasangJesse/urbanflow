@@ -403,9 +403,20 @@ async def test_repository_resolve_incident_not_found(mock_collection):
     mock_collection.update_one = AsyncMock(return_value=mock_result)
 
     repo = IncidentRepository()
-    result = await repo.resolve_incident("nonexistent")
+    result = await repo.resolve_incident("000000000000000000000000")
     assert result is False
 
+
+@pytest.mark.asyncio
+@patch("repository.incidents_collection")
+async def test_repository_find_by_id_not_found(mock_collection):
+    """IncidentRepository.find_by_id returns None when not found."""
+    from repository import IncidentRepository
+    mock_collection.find_one = AsyncMock(return_value=None)
+
+    repo = IncidentRepository()
+    result = await repo.find_by_id("000000000000000000000000")
+    assert result is None
 
 @pytest.mark.asyncio
 @patch("repository.incidents_collection")
@@ -438,16 +449,6 @@ async def test_repository_find_by_id_found(mock_collection):
     assert result["type"] == "accident"
 
 
-@pytest.mark.asyncio
-@patch("repository.incidents_collection")
-async def test_repository_find_by_id_not_found(mock_collection):
-    """IncidentRepository.find_by_id returns None when not found."""
-    from repository import IncidentRepository
-    mock_collection.find_one = AsyncMock(return_value=None)
-
-    repo = IncidentRepository()
-    result = await repo.find_by_id("nonexistent")
-    assert result is None
 
 
 @pytest.mark.asyncio
