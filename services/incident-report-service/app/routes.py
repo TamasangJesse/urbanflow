@@ -104,6 +104,7 @@ async def check_route(body: CheckRouteRequest):
 
 @router.get("/incidents/stats")
 async def get_incident_stats():
-    # TODO: implement real stats aggregation
+    from repository import incident_repository
     total = await incident_repository.count_all()
-    return {"total_incidents": total, "active": 0}
+    active = await incident_repository.count_active()
+    return {"total_incidents": total, "active": active}
