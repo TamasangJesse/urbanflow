@@ -46,12 +46,13 @@ spec:
               mountPath: /usr/bin/docker
             - name: docker-plugins
               mountPath: /usr/libexec/docker/cli-plugins
-            # k3s mounts
             - name: k3s-bin
               mountPath: /usr/local/bin/k3s
             - name: k3s-config
               mountPath: /etc/rancher/k3s
               readOnly: true
+            - name: k3s-containerd
+              mountPath: /run/k3s/containerd
           resources:
             requests:
               cpu: {{ .Values.jenkins.resources.requests.cpu }}
@@ -88,7 +89,6 @@ spec:
           hostPath:
             path: /usr/libexec/docker/cli-plugins
             type: DirectoryOrCreate
-        # k3s volumes
         - name: k3s-bin
           hostPath:
             path: /usr/local/bin/k3s
@@ -96,5 +96,9 @@ spec:
         - name: k3s-config
           hostPath:
             path: /etc/rancher/k3s
+            type: Directory
+        - name: k3s-containerd
+          hostPath:
+            path: /run/k3s/containerd
             type: Directory
 {{- end }}
