@@ -229,10 +229,6 @@ pipeline {
     }
 
 
-
-
-    
-
     post {
         always {
             echo "Pipeline finished on branch: ${env.BRANCH_NAME}"
