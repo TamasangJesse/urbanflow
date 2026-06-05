@@ -289,3 +289,196 @@ async def test_health_check(client):
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+# ════════════════════════════════════════════════════════════════
+# CHECK ROUTE TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_check_route_incident_detected(mock_find, client):
+    """
+    POST /incidents/check-route
+    Should return incident_detected: True when an incident
+    exists within 300m of any point on the route.
+    """
+    mock_find.return_value = [{
+        "_id": "665f3a2b1c4e2d001a8b4567",
+        "type": "roadblock",
+        "description": "Police checkpoint Carrefour Warda",
+        "latitude": 3.8712,
+        "longitude": 11.5163,
+        "severity": "medium",
+        "created_at": "2026-05-16T10:00:00"
+    }]
+
+    payload = {
+        "route_points": [
+            {"lat": 3.8690, "lng": 11.5180},
+            {"lat": 3.8712, "lng": 11.5163},
+            {"lat": 3.8750, "lng": 11.5200}
+        ]
+    }
+
+    response = await client.post("/incidents/check-route", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["incident_detected"] is True
+    assert data["incident"]["type"] == "roadblock"
+    assert data["incident"]["severity"] == "medium"
+
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_check_route_no_incident(mock_find, client):
+    """
+    POST /incidents/check-route
+    Should return incident_detected: False when no incidents
+    exist near any point on the route.
+    """
+    mock_find.return_value = []
+
+    payload = {
+        "route_points": [
+            {"lat": 3.8690, "lng": 11.5180},
+            {"lat": 3.8750, "lng": 11.5200}
+        ]
+    }
+
+    response = await client.post("/incidents/check-route", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["incident_detected"] is False
+    assert data["incident"] is None
+
+
+# ════════════════════════════════════════════════════════════════
+# VALIDATION TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("cqrs.commands.incident_repository.save_incident", new_callable=AsyncMock)
+@patch("cqrs.commands.publish_incident_event", new_callable=AsyncMock)
+async def test_report_incident_missing_required_fields(mock_publish, mock_save, client):
+    """
+    POST /incidents
+    Should return 422 when required fields are missing.
+    """
+    incomplete_payload = {
+        "type": "accident"
+    }
+
+    response = await client.post("/incidents", json=incomplete_payload)
+
+    assert response.status_code == 422
+    mock_save.assert_not_called()
+    mock_publish.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("cqrs.commands.incident_repository.save_incident", new_callable=AsyncMock)
+@patch("cqrs.commands.publish_incident_event", new_callable=AsyncMock)
+async def test_report_incident_invalid_severity(mock_publish, mock_save, client):
+    """
+    POST /incidents
+    Should return 422 when severity is not a valid enum value.
+    """
+    invalid_payload = {
+        "type": "accident",
+        "description": "Car crash",
+        "latitude": 3.8690,
+        "longitude": 11.5180,
+        "severity": "catastrophic",
+        "reported_by": "user_001"
+    }
+
+    response = await client.post("/incidents", json=invalid_payload)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+@patch("cqrs.commands.incident_repository.save_incident", new_callable=AsyncMock)
+@patch("cqrs.commands.publish_incident_event", new_callable=AsyncMock)
+async def test_report_incident_different_types(mock_publish, mock_save, client):
+    """
+    POST /incidents
+    Should accept all valid incident types:
+    accident, roadblock, flooding, construction.
+    """
+    mock_save.return_value = "665f3a2b1c4e2d001a8b9999"
+    mock_publish.return_value = None
+
+    for incident_type in ["accident", "roadblock", "flooding"]:
+        payload = {
+            "type": incident_type,
+            "description": f"Test {incident_type} near Mokolo",
+            "latitude": 3.8712,
+            "longitude": 11.5163,
+            "severity": "low",
+            "reported_by": "user_002"
+        }
+        response = await client.post("/incidents", json=payload)
+        assert response.status_code == 201, f"Failed for type: {incident_type}"
+
+
+# ════════════════════════════════════════════════════════════════
+# RADIUS EDGE CASE TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_get_incidents_near_default_radius(mock_find, client):
+    """
+    GET /incidents/near
+    Should use default radius of 5000m when not specified.
+    """
+    mock_find.return_value = []
+
+    response = await client.get("/incidents/near?lat=3.8690&lng=11.5180")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 0
+    assert data["incidents"] == []
+
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_get_incidents_near_custom_radius(mock_find, client):
+    """
+    GET /incidents/near
+    Should respect custom radius parameter.
+    """
+    mock_find.return_value = [
+        {"_id": "xyz789", "type": "flooding", "is_active": True},
+        {"_id": "xyz790", "type": "accident", "is_active": True}
+    ]
+
+    response = await client.get(
+        "/incidents/near?lat=3.8690&lng=11.5180&radius=10000"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+
+
+@pytest.mark.asyncio
+@patch("cqrs.queries.incident_repository.find_near", new_callable=AsyncMock)
+async def test_get_incidents_near_empty_result(mock_find, client):
+    """
+    GET /incidents/near
+    Should return empty list when no incidents exist nearby.
+    """
+    mock_find.return_value = []
+
+    response = await client.get(
+        "/incidents/near?lat=3.8690&lng=11.5180&radius=100"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 0
