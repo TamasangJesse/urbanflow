@@ -354,3 +354,238 @@ class TestRetrain:
             response = client.post("/model/retrain")
         assert response.status_code == 400
         assert "Not enough training data" in response.json()["detail"]
+
+# ---------------------------------------------------------------------------
+# FIXTURES FOR PREDICT TESTS (model bundle mock)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_model_bundle():
+    """Mock ML model bundle with predict and label encoder."""
+    mock_model = MagicMock()
+    mock_model.predict.return_value = ["High"]
+    mock_model.predict_proba.return_value = [[0.05, 0.10, 0.75, 0.10]]
+
+    mock_encoder = MagicMock()
+    mock_encoder.classes_ = ["High", "Low", "Medium", "Very High"]
+    mock_encoder.inverse_transform.return_value = ["High"]
+
+    return {
+        "model":         mock_model,
+        "label_encoder": mock_encoder,
+        "feature_cols":  ["latitude", "longitude", "hour", "day_encoded"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# INCIDENT BOOST TESTS
+# ---------------------------------------------------------------------------
+
+class TestIncidentBoost:
+
+    VALID_PARAMS = {
+        "location_name": "Carrefour Warda",
+        "latitude":      3.8731,
+        "longitude":     11.5321,
+        "day_of_week":   "Friday",
+        "hour":          18,
+    }
+
+    def test_boost_overrides_model_prediction(self, mock_model_bundle):
+        boosted_state = {"Carrefour Warda": "Very High"}
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["congestion_level"] == "Very High"
+        assert data.get("source") == "incident_boost"
+
+    def test_no_boost_falls_back_to_model(self, mock_model_bundle):
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.status_code == 200
+        assert response.json()["congestion_level"] == "High"
+
+    def test_boost_for_different_location_does_not_affect_request(self, mock_model_bundle):
+        boosted_state = {"Mokolo Market": "Very High"}
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.status_code == 200
+        assert response.json()["congestion_level"] == "High"
+
+    def test_multiple_boosts_only_matching_applied(self, mock_model_bundle):
+        boosted_state = {
+            "Mokolo Market":   "Very High",
+            "Carrefour Warda": "High",
+            "Biyem-Assi":      "Very High",
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.status_code == 200
+        assert response.json()["congestion_level"] == "High"
+
+    def test_boost_severity_high(self, mock_model_bundle):
+        boosted_state = {"Carrefour Warda": "Very High"}
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.json()["congestion_level"] == "Very High"
+
+    def test_boost_severity_medium(self, mock_model_bundle):
+        boosted_state = {"Carrefour Warda": "High"}
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.json()["congestion_level"] == "High"
+
+    def test_boost_severity_low(self, mock_model_bundle):
+        boosted_state = {"Carrefour Warda": "Medium"}
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", boosted_state):
+            response = client.get("/predict", params=self.VALID_PARAMS)
+        assert response.json()["congestion_level"] == "Medium"
+
+
+# ---------------------------------------------------------------------------
+# PREDICTION EDGE CASE TESTS
+# ---------------------------------------------------------------------------
+
+class TestPredictEdgeCases:
+
+    def test_predict_peak_hour_friday(self, mock_model_bundle):
+        params = {
+            "location_name": "Mokolo Market",
+            "latitude":      3.8712,
+            "longitude":     11.5163,
+            "day_of_week":   "Friday",
+            "hour":          17,
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            response = client.get("/predict", params=params)
+        assert response.status_code == 200
+        assert "congestion_level" in response.json()
+
+    def test_predict_midnight_hour(self, mock_model_bundle):
+        params = {
+            "location_name": "Bastos",
+            "latitude":      3.8830,
+            "longitude":     11.5150,
+            "day_of_week":   "Sunday",
+            "hour":          0,
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            response = client.get("/predict", params=params)
+        assert response.status_code == 200
+
+    def test_predict_all_valid_days(self, mock_model_bundle):
+        days = ["Monday", "Tuesday", "Wednesday",
+                "Thursday", "Friday", "Saturday", "Sunday"]
+        params_base = {
+            "location_name": "Bastos",
+            "latitude":      3.8830,
+            "longitude":     11.5150,
+            "hour":          8,
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            for day in days:
+                response = client.get(
+                    "/predict", params={**params_base, "day_of_week": day}
+                )
+                assert response.status_code == 200, f"Failed for day: {day}"
+
+    def test_predict_boundary_hour_23(self, mock_model_bundle):
+        params = {
+            "location_name": "Carrefour Warda",
+            "latitude":      3.8731,
+            "longitude":     11.5321,
+            "day_of_week":   "Monday",
+            "hour":          23,
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            response = client.get("/predict", params=params)
+        assert response.status_code == 200
+
+    def test_predict_response_includes_source_field(self, mock_model_bundle):
+        params = {
+            "location_name": "Bastos",
+            "latitude":      3.8830,
+            "longitude":     11.5150,
+            "day_of_week":   "Monday",
+            "hour":          8,
+        }
+        with patch("app.state._model_bundle", mock_model_bundle), \
+             patch("app.state.active_incident_boosts", {}):
+            response = client.get("/predict", params=params)
+        assert "source" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# DATA INTEGRITY TESTS
+# ---------------------------------------------------------------------------
+
+class TestDataIntegrity:
+
+    def test_traffic_record_created_at_is_datetime(self, mock_traffic_record):
+        assert isinstance(mock_traffic_record["created_at"], datetime)
+
+    def test_traffic_record_has_all_required_fields(self, mock_traffic_record):
+        required = [
+            "id", "location_name", "latitude", "longitude",
+            "day_of_week", "hour", "congestion_level", "source", "created_at"
+        ]
+        for field in required:
+            assert field in mock_traffic_record, f"Missing field: {field}"
+
+    def test_congestion_level_valid_values(self):
+        valid_levels = {"Low", "Medium", "High", "Very High"}
+        assert "High" in valid_levels
+
+    def test_hour_within_valid_range(self, mock_traffic_record):
+        assert 0 <= mock_traffic_record["hour"] <= 23
+
+    def test_coordinates_within_yaounde_bounds(self, mock_traffic_record):
+        assert 3.7  <= mock_traffic_record["latitude"]  <= 4.1
+        assert 11.3 <= mock_traffic_record["longitude"] <= 11.7
+
+
+# ---------------------------------------------------------------------------
+# RETRAIN EDGE CASES
+# ---------------------------------------------------------------------------
+
+class TestRetrainEdgeCases:
+
+    def test_retrain_updates_in_memory_model(self, mock_model_bundle, mock_training_summary):
+        with patch("app.routes.train_model", return_value=mock_training_summary), \
+             patch("app.routes.load_model",  return_value=mock_model_bundle), \
+             patch("app.state") as mock_state:
+            response = client.post("/model/retrain")
+        assert response.status_code == 200
+
+    def test_retrain_accuracy_above_threshold(self, mock_model_bundle, mock_training_summary):
+        with patch("app.routes.train_model", return_value=mock_training_summary), \
+             patch("app.routes.load_model",  return_value=mock_model_bundle):
+            response = client.post("/model/retrain")
+        assert response.json()["test_accuracy"] >= 0.75
+
+    def test_retrain_returns_class_list(self, mock_model_bundle, mock_training_summary):
+        with patch("app.routes.train_model", return_value=mock_training_summary), \
+             patch("app.routes.load_model",  return_value=mock_model_bundle):
+            response = client.post("/model/retrain")
+        classes = response.json()["classes"]
+        assert "High"      in classes
+        assert "Low"       in classes
+        assert "Medium"    in classes
+        assert "Very High" in classes
+
+    def test_retrain_server_error_returns_500(self):
+        with patch("app.routes.train_model", side_effect=Exception("Unexpected DB failure")):
+            response = client.post("/model/retrain")
+        assert response.status_code == 500
