@@ -75,11 +75,11 @@ pipeline {
                     steps {
                         sh '''
                             CONTAINER=$(docker compose -p urbanflow run --rm --no-deps -d incident-report-service sleep 60)
-                            docker exec -e COVERAGE_FILE=/tmp/.coverage $CONTAINER python -m pytest -v \
-                                --junitxml=/tmp/results.xml \
-                                --cov=. \
-                                --cov-omit=tests/* \
-                                --cov-report=xml:/tmp/coverage.xml || true
+                            docker exec -e COVERAGE_FILE=/tmp/.coverage $CONTAINER python -m pytest tests/ -v \
+                               --junitxml=/tmp/results.xml \
+                               --cov=. \
+                               --cov-omit=tests/* \
+                               --cov-report=xml:/tmp/coverage.xml || true
                             docker cp $CONTAINER:/tmp/results.xml ${WORKSPACE}/services/incident-report-service/tests/results.xml || true
                             docker cp $CONTAINER:/tmp/coverage.xml ${WORKSPACE}/services/incident-report-service/tests/coverage.xml || true
                             docker stop $CONTAINER || true
