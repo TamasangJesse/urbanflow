@@ -21,7 +21,6 @@ spec:
         app: jenkins
         app.kubernetes.io/name: urbanflow
     spec:
-      # Matches compose: user: root + privileged: true
       securityContext:
         runAsUser: 0
       containers:
@@ -29,7 +28,7 @@ spec:
           image: "{{ .Values.jenkins.image }}:{{ .Values.jenkins.imageTag }}"
           imagePullPolicy: {{ .Values.jenkins.imagePullPolicy }}
           securityContext:
-            privileged: true   # needed to access docker socket
+            privileged: true
           ports:
             - name: http
               containerPort: {{ .Values.jenkins.port }}
@@ -41,13 +40,18 @@ spec:
           volumeMounts:
             - name: jenkins-home
               mountPath: /var/jenkins_home
-            # Matches compose volumes exactly
             - name: docker-sock
               mountPath: /var/run/docker.sock
             - name: docker-bin
               mountPath: /usr/bin/docker
             - name: docker-plugins
               mountPath: /usr/libexec/docker/cli-plugins
+            # k3s mounts
+            - name: k3s-bin
+              mountPath: /usr/local/bin/k3s
+            - name: k3s-config
+              mountPath: /etc/rancher/k3s
+              readOnly: true
           resources:
             requests:
               cpu: {{ .Values.jenkins.resources.requests.cpu }}
@@ -72,7 +76,6 @@ spec:
         - name: jenkins-home
           persistentVolumeClaim:
             claimName: jenkins-pvc
-        # Host path mounts — matches compose bind mounts exactly
         - name: docker-sock
           hostPath:
             path: /var/run/docker.sock
@@ -85,4 +88,13 @@ spec:
           hostPath:
             path: /usr/libexec/docker/cli-plugins
             type: DirectoryOrCreate
+        # k3s volumes
+        - name: k3s-bin
+          hostPath:
+            path: /usr/local/bin/k3s
+            type: File
+        - name: k3s-config
+          hostPath:
+            path: /etc/rancher/k3s
+            type: Directory
 {{- end }}

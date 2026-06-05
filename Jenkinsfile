@@ -198,33 +198,31 @@ pipeline {
             steps {
                 echo 'Deploying UrbanFlow to Kubernetes...'
                 sh '''
-                    export PATH=$PATH:/usr/local/bin
-
                     docker build -t urbanflow-api-gateway:latest ./services/api-gateway
-                    docker save urbanflow-api-gateway:latest | k3s ctr images import -
+                    docker save urbanflow-api-gateway:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build -t urbanflow-user-service:latest ./services/user-service
-                    docker save urbanflow-user-service:latest | k3s ctr images import -
+                    docker save urbanflow-user-service:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build -t urbanflow-incident-report-service:latest ./services/incident-report-service
-                    docker save urbanflow-incident-report-service:latest | k3s ctr images import -
+                    docker save urbanflow-incident-report-service:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build -t urbanflow-notification-service:latest ./services/notification-service
-                    docker save urbanflow-notification-service:latest | k3s ctr images import -
+                    docker save urbanflow-notification-service:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build -t urbanflow-traffic-intelligence-service:latest ./services/traffic-intelligence-service
-                    docker save urbanflow-traffic-intelligence-service:latest | k3s ctr images import -
+                    docker save urbanflow-traffic-intelligence-service:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build -t urbanflow-rag-service:latest ./services/rag-service
-                    docker save urbanflow-rag-service:latest | k3s ctr images import -
+                    docker save urbanflow-rag-service:latest | /usr/local/bin/k3s ctr images import -
 
                     docker build \
                         --build-arg VITE_API_BASE_URL=https://urbanflow.duckdns.org/api \
                         --build-arg VITE_GOOGLE_MAPS_API_KEY=$(grep VITE_GOOGLE_MAPS_API_KEY frontend/.env | cut -d= -f2) \
                         -t urbanflow-frontend:latest ./frontend
-                    docker save urbanflow-frontend:latest | k3s ctr images import -
+                    docker save urbanflow-frontend:latest | /usr/local/bin/k3s ctr images import -
 
-                    KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl rollout restart deployment -n urbanflow
+                    KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/k3s kubectl rollout restart deployment -n urbanflow
                 '''
             }
         }
