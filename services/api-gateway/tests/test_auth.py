@@ -10,6 +10,7 @@ Scenarios covered:
   - Token with wrong secret is rejected
   - Malformed token string is rejected
   - Valid token that is blacklisted is rejected
+  this one is quite easy to understand for real
 """
 
 import pytest
