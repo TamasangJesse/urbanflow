@@ -101,3 +101,62 @@ async def check_route(body: CheckRouteRequest):
         "incident_detected": False,
         "incident": None
     }
+
+    # ════════════════════════════════════════════════════════════════
+# ROUTE CHECKING TESTS
+# ════════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+@patch("routes.qry_check_route_for_incidents", new_callable=AsyncMock)
+async def test_check_route_incident_detected(mock_qry, client):
+    """
+    POST /incidents/check-route
+    Should return incident data mapped correctly if an incident lies on the path.
+    """
+    mock_qry.return_value = {
+        "_id": "inc_999",
+        "type": "roadblock",
+        "description": "Protest blocking path",
+        "latitude": 4.123,
+        "longitude": 12.456,
+        "severity": "critical",
+        "created_at": "2026-06-05T12:00:00Z"
+    }
+
+    payload = {
+        "route_points": [
+            {"latitude": 4.120, "longitude": 12.450},
+            {"latitude": 4.130, "longitude": 12.460}
+        ]
+    }
+
+    response = await client.post("/incidents/check-route", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["incident_detected"] is True
+    assert data["incident"]["id"] == "inc_999"
+    assert data["incident"]["type"] == "roadblock"
+
+
+@pytest.mark.asyncio
+@patch("routes.qry_check_route_for_incidents", new_callable=AsyncMock)
+async def test_check_route_clean(mock_qry, client):
+    """
+    POST /incidents/check-route
+    Should return incident_detected: False when path is clear.
+    """
+    mock_qry.return_value = None
+
+    payload = {
+        "route_points": [
+            {"latitude": 1.0, "longitude": 1.0}
+        ]
+    }
+
+    response = await client.post("/incidents/check-route", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["incident_detected"] is False
+    assert data["incident"] is None
