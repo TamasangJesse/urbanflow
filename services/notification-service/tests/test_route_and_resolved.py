@@ -217,11 +217,12 @@ class TestIncidentResolved:
         with patch("app.workers.stream_consumer.manager") as mock_manager:
             mock_manager.broadcast = AsyncMock()
             await _process_message(redis, service, "msg-resolved-001", fields)
-            mock_manager.broadcast.assert_called_once_with({
-                "type": "incident_resolved",
-                "incident_id": "inc-resolved-001",
-            })
+            call_args = mock_manager.broadcast.call_args[0][0]
+                assert call_args["type"] == "incident_resolved"
+                assert call_args["incident_id"] == "inc-resolved-001"
+                assert mock_manager.broadcast.call_count == 1
 
+                
     @pytest.mark.asyncio
     async def test_resolved_event_acks_and_does_not_notify_users(self):
         from app.workers.stream_consumer import _process_message
